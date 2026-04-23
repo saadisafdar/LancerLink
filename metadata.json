@@ -1,0 +1,5 @@
+{
+  "name": "LancerLink",
+  "description": "A modern freelance platform for clients to post projects and freelancers to submit bids, featuring a professional dark-themed UI and local data persistence.",
+  "requestFramePermissions": []
+}
