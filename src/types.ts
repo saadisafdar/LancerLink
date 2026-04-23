@@ -11,7 +11,7 @@ export interface User {
 
 export interface Attachment {
   name: string;
-  data: string; // Base64 for localStorage demo
+  data: string; // Base64
   type: string;
 }
 
@@ -25,6 +25,7 @@ export interface Project {
   budget: number;
   category: string;
   createdAt: string;
+  deadline: string; // Updated requirement
   status: 'Open' | 'Hired' | 'Completed';
   hiredUserId?: string;
   attachments: Attachment[];
@@ -38,6 +39,7 @@ export interface Bid {
   bidderRole: Role;
   amount: number;
   deliveryDays: number;
+  notes?: string;   // Updated requirement
   createdAt: string;
 }
 
