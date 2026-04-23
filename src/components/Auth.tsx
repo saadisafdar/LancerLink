@@ -33,8 +33,9 @@ export const Auth: React.FC<AuthProps> = ({ role, onAuth, onBack, users, onSetUs
         username,
         password,
         role,
-        balance: role === 'client' ? 5000 : 0 // Starting balance for clients
+        balance: 0 // Default starting balance
       };
+      
       onSetUsers([...users, newUser]);
       onAuth(newUser);
     } else {
@@ -48,41 +49,41 @@ export const Auth: React.FC<AuthProps> = ({ role, onAuth, onBack, users, onSetUs
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-md w-full glass-card p-8"
       >
-        <button onClick={onBack} className="text-xs text-gray-500 hover:text-white mb-6">← Back to selection</button>
-        <h2 className="text-2xl font-bold mb-2 capitalize">{role} Portal</h2>
-        <p className="text-gray-400 mb-8">{isSignup ? 'Create your account' : 'Sign in to your portal'}</p>
+        <button onClick={onBack} className="text-sm font-medium text-gray-500 hover:text-gray-900 mb-6 transition-colors">← Back to selection</button>
+        <h2 className="text-3xl font-bold mb-2 capitalize text-gray-900">{role} Portal</h2>
+        <p className="text-gray-500 mb-8">{isSignup ? 'Create your account' : 'Sign in to your portal'}</p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {isSignup && (
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Full Name</label>
               <input name="name" required type="text" placeholder="John Doe" className="input-field w-full" />
             </div>
           )}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 uppercase">Username</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Username</label>
             <input name="username" required type="text" placeholder="username" className="input-field w-full" />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 uppercase">Password</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">Password</label>
             <input name="password" required type="password" placeholder="••••••••" className="input-field w-full" />
           </div>
-          {error && <p className="text-xs text-red-500">{error}</p>}
-          <button type="submit" className="btn-primary w-full shadow-lg shadow-blue-600/20">
+          {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg border border-red-100">{error}</p>}
+          <button type="submit" className="btn-primary w-full shadow-md shadow-green-600/20 py-3">
             {isSignup ? `Join as ${role}` : `Login as ${role}`}
           </button>
         </form>
 
-        <div className="mt-8 text-center pt-8 border-t border-white/5">
+        <div className="mt-8 text-center pt-8 border-t border-gray-100">
           <button 
             onClick={() => { setIsSignup(!isSignup); setError(''); }}
-            className="text-sm text-gray-400 hover:text-white"
+            className="text-sm font-medium text-gray-500 hover:text-green-600 transition-colors"
           >
             {isSignup ? 'Already have an account? Login' : "Don't have an account? Sign up"}
           </button>
