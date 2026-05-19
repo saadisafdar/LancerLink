@@ -1,8 +1,102 @@
-node_modules/
+# =========================
+# Python core
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# =========================
+# Virtual environments
+# =========================
+venv/
+.venv/
+env/
+.env/
+
+# =========================
+# pip / packaging
+# =========================
+pip-wheel-metadata/
+*.egg
+*.egg-info/
 build/
 dist/
-coverage/
+wheels/
+
+# =========================
+# Jupyter / notebooks
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# DATASETS (IMPORTANT)
+# Ignore images + labels inside datasets
+# =========================
+dataset/
+datasets/
+dataset*/        # dataset1, dataset2, etc.
+
+# If you want to be extra explicit:
+dataset/**/images/
+dataset/**/labels/
+
+# =========================
+# YOLO / Training outputs
+# =========================
+runs/
+outputs/
+results/
+logs/
+
+# =========================
+# Image formats (ONLY inside datasets, NOT global)
+# =========================
+dataset/**/*.jpg
+dataset/**/*.jpeg
+dataset/**/*.png
+dataset/**/*.bmp
+dataset/**/*.tiff
+dataset/**/*.webp
+dataset/**/*.txt
+
+# =========================
+# Matplotlib
+# =========================
+.matplotlib/
+
+# =========================
+# Torch / CUDA cache
+# =========================
+.cache/
+torch_cache/
+cuda/
+
+# =========================
+# IDEs & Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS files
+# =========================
 .DS_Store
+Thumbs.db
+
+# =========================
+# Test / coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Temporary files
+# =========================
 *.log
-.env*
-!.env.example
+*.tmp
+*.bak
