@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LancerLink - Modern Freelance Marketplace</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Custom stylesheet for custom animations and glassmorphism -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="h-full flex flex-col bg-slate-50 text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Toast Notification System (Targeted by app.js) -->
+  <div id="toast-container"></div>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-grow flex flex-col min-h-screen">
+
+    <!-- ======================================================== -->
+    <!-- 1. WELCOME LANDING & AUTHENTICATION VIEW -->
+    <!-- ======================================================== -->
+    <section id="welcome-section" class="w-full flex-grow flex flex-col items-center justify-center py-12 px-4 md:px-8 relative grid-bg overflow-y-auto">
+      <!-- Glow effect decorative blobs -->
+      <div class="absolute top-1/4 left-1/4 w-72 h-72 bg-brand-200/40 rounded-full blur-3xl -z-10 animate-pulse"></div>
+      <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-brand-300/30 rounded-full blur-3xl -z-10 animate-pulse" style="animation-delay: 2s;"></div>
+
+      <!-- Landing Branding Header -->
+      <div class="text-center max-w-2xl mb-12 animate-fade-in-up">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-200/50 text-brand-700 font-semibold text-sm mb-4">
+          <i data-lucide="sparkles" class="w-4 h-4 text-brand-600"></i>
+          Next-Gen Freelance Ledger
+        </div>
+        <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-4">
+          Lancer<span class="text-brand-600 relative inline-block">Link<span class="absolute bottom-1 left-0 w-full h-2 bg-brand-200 -z-10 rounded"></span></span>
+        </h1>
+        <p class="text-lg text-slate-600 font-medium">
+          A secure, beautifully streamlined freelance marketplace operating with instant escrow validation and zero transaction overhead.
+        </p>
+      </div>
+
+      <!-- Main Role Selection Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl px-4 mb-12 animate-fade-in-up" style="animation-delay: 0.1s;">
+        
+        <!-- CLIENT GATEWAY CARD -->
+        <div class="group relative bg-white rounded-3xl border border-slate-200 p-8 custom-shadow custom-shadow-hover transition-all duration-300 flex flex-col justify-between overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300"></div>
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-6">
+              <i data-lucide="briefcase" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-950 mb-3 group-hover:text-brand-700 transition-colors">Client Portal</h2>
+            <p class="text-slate-500 text-sm leading-relaxed mb-8">
+              Post contract requests, evaluate bespoke proposals from verified developers, lock budget in escrow, and release funds upon review.
+            </p>
+          </div>
+          <button onclick="openAuthModal('client')" class="w-full py-4 px-6 rounded-2xl bg-slate-900 text-white font-semibold flex items-center justify-center gap-2 hover:bg-brand-600 transition-all duration-300 shadow-sm shadow-slate-950/10 hover:shadow-brand-500/20 group-hover:translate-y-[-2px]">
+            Enter Client Workspace
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- FREELANCER GATEWAY CARD -->
+        <div class="group relative bg-white rounded-3xl border border-slate-200 p-8 custom-shadow custom-shadow-hover transition-all duration-300 flex flex-col justify-between overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-brand-50 rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-300"></div>
+          <div>
+            <div class="w-12 h-12 rounded-2xl bg-brand-50 flex items-center justify-center text-brand-600 mb-6">
+              <i data-lucide="laptop" class="w-6 h-6"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-slate-950 mb-3 group-hover:text-brand-700 transition-colors">Freelancer Portal</h2>
+            <p class="text-slate-500 text-sm leading-relaxed mb-8">
+              Browse global project requests, submit precise estimates & proposals, manage active tasks, and withdraw earnings directly.
+            </p>
+          </div>
+          <button onclick="openAuthModal('freelancer')" class="w-full py-4 px-6 rounded-2xl bg-brand-600 text-white font-semibold flex items-center justify-center gap-2 hover:bg-brand-700 transition-all duration-300 shadow-sm shadow-brand-600/10 hover:shadow-brand-500/20 group-hover:translate-y-[-2px]">
+            Enter Freelancer Workspace
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Trust Badging / Platform Stats -->
+      <div class="flex flex-wrap items-center justify-center gap-8 md:gap-16 text-center animate-fade-in-up" style="animation-delay: 0.2s;">
+        <div>
+          <p class="text-3xl font-extrabold text-slate-900">$4.8M+</p>
+          <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">Escrow Funds Handled</p>
+        </div>
+        <div class="w-px h-8 bg-slate-200 hidden md:block"></div>
+        <div>
+          <p class="text-3xl font-extrabold text-slate-900">12,400+</p>
+          <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">Active Accounts</p>
+        </div>
+        <div class="w-px h-8 bg-slate-200 hidden md:block"></div>
+        <div>
+          <p class="text-3xl font-extrabold text-slate-900">99.8%</p>
+          <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mt-1">Hassle-Free Release</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- 2. CLIENT DASHBOARD VIEW (SPA Shell) -->
+    <!-- ======================================================== -->
+    <section id="client-dashboard-section" class="w-full hidden flex-col flex-grow bg-slate-50 animate-fade-in">
+      <!-- Dashboard Top Header -->
+      <header class="sticky top-0 z-40 glass-header w-full border-b border-slate-200 px-4 py-4 md:px-8 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-lg shadow-brand-600/25">
+            <i data-lucide="zap" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <span class="text-xl font-bold tracking-tight text-slate-900">LancerLink</span>
+            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white tracking-wide uppercase">Client Hub</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Dummy Wallet Pill -->
+          <div class="wallet-glow flex items-center gap-2 bg-white border border-slate-200 pl-3 pr-2 py-1.5 rounded-full shadow-sm">
+            <span class="text-[10px] uppercase font-bold text-slate-400">Wallet</span>
+            <span id="client-wallet-display" class="font-extrabold text-brand-600 text-sm md:text-base">$0.00</span>
+            <button onclick="openDepositModal()" class="w-7 h-7 rounded-full bg-brand-50 hover:bg-brand-100 border border-brand-200/50 flex items-center justify-center text-brand-600 transition-all hover:scale-105 active:scale-95" title="Add funds">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Profile & Logout Dropdown simulation -->
+          <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
+            <div class="text-right hidden sm:block">
+              <p id="client-username-display" class="text-sm font-bold text-slate-950">Jane Cooper</p>
+              <p class="text-[10px] text-slate-400 font-semibold">Active Client</p>
+            </div>
+            <button onclick="logout()" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-500 hover:text-red-500 transition-all flex items-center justify-center shadow-sm" title="Log Out">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Layout Content -->
+      <div class="flex-grow flex flex-col md:flex-row">
+        <!-- Sidebar Navigation -->
+        <nav class="w-full md:w-64 bg-white border-r border-slate-200 p-6 flex flex-col justify-between shrink-0">
+          <div class="space-y-6">
+            <div>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-3">Navigation</p>
+              <ul class="space-y-1.5">
+                <li>
+                  <button onclick="switchTab('client', 'my-projects')" id="client-tab-my-projects-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 bg-brand-50 text-brand-700">
+                    <i data-lucide="folder-kanban" class="w-4 h-4"></i>
+                    My Project Board
+                  </button>
+                </li>
+                <li>
+                  <button onclick="switchTab('client', 'post-project')" id="client-tab-post-project-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+                    <i data-lucide="file-plus-2" class="w-4 h-4"></i>
+                    Post New Project
+                  </button>
+                </li>
+                <li>
+                  <button onclick="switchTab('client', 'wallet-portal')" id="client-tab-wallet-portal-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+                    <i data-lucide="wallet" class="w-4 h-4"></i>
+                    Funding Account
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Platform Quick Stats Card -->
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escrow Status</span>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs font-semibold text-slate-600">Locked Funds</span>
+                <span id="client-locked-funds-display" class="text-sm font-extrabold text-emerald-600">$0.00</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                <div id="client-locked-funds-bar" class="bg-brand-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version Footnote -->
+          <div class="mt-8 text-center text-[10px] text-slate-400 font-semibold border-t border-slate-100 pt-4 hidden md:block">
+            LancerLink Suite v1.2.0<br>&copy; 2026 DevLedger Group
+          </div>
+        </nav>
+
+        <!-- Dynamic Main Content Panels -->
+        <main class="flex-grow p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+          
+          <!-- TAB: My Projects Board -->
+          <div id="client-tab-my-projects" class="tab-content active space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Project Board</h2>
+                <p class="text-sm text-slate-500 font-medium">Track your contract submissions, review active proposals, and accept completed work.</p>
+              </div>
+              <button onclick="switchTab('client', 'post-project')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20 hover:-translate-y-0.5">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                Create Contract
+              </button>
+            </div>
+
+            <!-- Stats Mini Bar -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div class="bg-white border border-slate-200 p-4 rounded-2xl custom-shadow flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="search" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Open Bidding</p>
+                  <p id="stat-client-open" class="text-lg font-extrabold text-slate-900">0</p>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 p-4 rounded-2xl custom-shadow flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="clock" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Hired / Active</p>
+                  <p id="stat-client-hired" class="text-lg font-extrabold text-slate-900">0</p>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 p-4 rounded-2xl custom-shadow flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="eye" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Under Review</p>
+                  <p id="stat-client-review" class="text-lg font-extrabold text-slate-900">0</p>
+                </div>
+              </div>
+              <div class="bg-white border border-slate-200 p-4 rounded-2xl custom-shadow flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                  <i data-lucide="check-circle2" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] font-bold uppercase text-slate-400">Completed</p>
+                  <p id="stat-client-completed" class="text-lg font-extrabold text-slate-900">0</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Render Area -->
+            <div id="client-projects-container" class="space-y-6">
+              <!-- Empty state default container -->
+              <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow">
+                <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
+                  <i data-lucide="folder-open" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 mb-1">No Projects Found</h3>
+                <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Create a contract proposal and submit it to our worldwide network of high-caliber freelancers.</p>
+                <button onclick="switchTab('client', 'post-project')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-sm">
+                  Create First Contract
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: Post Project Form -->
+          <div id="client-tab-post-project" class="tab-content space-y-6">
+            <div>
+              <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Create Contract</h2>
+              <p class="text-sm text-slate-500 font-medium font-sans">Draft custom contract specifications to attract competitive bids from professional operators.</p>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-3xl custom-shadow p-6 md:p-8 max-w-3xl">
+              <form id="post-project-form" class="space-y-6" onsubmit="handlePostProject(event)">
+                <div class="space-y-2">
+                  <label for="post-title" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                    <i data-lucide="heading" class="w-4 h-4 text-slate-400"></i>
+                    Contract Title
+                  </label>
+                  <input type="text" id="post-title" required placeholder="e.g. Develop Minimalist FinTech Dashboard Frontend" 
+                    class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-2">
+                    <label for="post-category" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <i data-lucide="tag" class="w-4 h-4 text-slate-400"></i>
+                      Project Domain Category
+                    </label>
+                    <select id="post-category" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white">
+                      <option value="">Select Domain Category</option>
+                      <option value="Web Development">Web Development</option>
+                      <option value="Mobile Applications">Mobile Applications</option>
+                      <option value="Brand Design">Brand Design & Illustration</option>
+                      <option value="Copywriting & Marketing">Copywriting & Marketing</option>
+                      <option value="Database Engineering">Database Engineering</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label for="post-budget" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <i data-lucide="dollar-sign" class="w-4 h-4 text-slate-400"></i>
+                      Target Budget (USD)
+                    </label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-3.5 text-slate-400 text-sm font-bold">$</span>
+                      <input type="number" id="post-budget" required min="10" placeholder="500" 
+                        class="w-full pl-8 pr-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-semibold transition-all">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label for="post-description" class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                    <i data-lucide="align-left" class="w-4 h-4 text-slate-400"></i>
+                    Contract Description & Deliverables
+                  </label>
+                  <textarea id="post-description" required rows="5" placeholder="Specify project requirements, expected milestones, tech guidelines, and deliverables. Be as descriptive as possible so freelancers can write accurate pitches."
+                    class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                  <button type="button" onclick="switchTab('client', 'my-projects')" class="px-5 py-3 rounded-2xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-semibold text-sm transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit" class="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20">
+                    Publish Contract
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- TAB: Client Wallet Portal -->
+          <div id="client-tab-wallet-portal" class="tab-content space-y-6">
+            <div>
+              <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Deposit Funds</h2>
+              <p class="text-sm text-slate-500 font-medium">Add virtual funds to secure contracts via simulated escrow contracts instantly.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
+              <!-- Wallet Core stats card -->
+              <div class="bg-gradient-to-br from-slate-900 via-slate-950 to-brand-950 rounded-3xl p-8 text-white relative overflow-hidden custom-shadow col-span-1">
+                <div class="absolute -right-4 -bottom-4 w-44 h-44 bg-brand-500/15 rounded-full blur-2xl"></div>
+                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-6 border border-white/10">
+                  <i data-lucide="wallet" class="w-6 h-6 text-brand-400"></i>
+                </div>
+                <p class="text-xs uppercase font-bold tracking-wider text-slate-400 mb-1">Total Fluid Wallet Balance</p>
+                <h3 id="wallet-portal-client-balance" class="text-4xl font-extrabold tracking-tight mb-2">$0.00</h3>
+                <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5 text-brand-400"></i>
+                  Funds held securely on sandbox ledger.
+                </p>
+              </div>
+
+              <!-- Deposit Form Card -->
+              <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 custom-shadow col-span-2 space-y-6">
+                <h3 class="text-xl font-bold text-slate-950">Add Virtual Capital</h3>
+                <form id="deposit-form" class="space-y-4" onsubmit="handleDeposit(event)">
+                  <div class="space-y-2">
+                    <label for="deposit-amount" class="text-sm font-bold text-slate-800">
+                      Amount to Add (USD)
+                    </label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
+                      <input type="number" id="deposit-amount" required min="5" placeholder="1000" 
+                        class="w-full pl-8 pr-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-semibold transition-all">
+                    </div>
+                  </div>
+
+                  <!-- Quick Select Chips -->
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="setQuickDeposit(250)" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-xs font-semibold text-slate-600 hover:text-brand-600 transition-all">+$250</button>
+                    <button type="button" onclick="setQuickDeposit(500)" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-xs font-semibold text-slate-600 hover:text-brand-600 transition-all">+$500</button>
+                    <button type="button" onclick="setQuickDeposit(1000)" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-xs font-semibold text-slate-600 hover:text-brand-600 transition-all">+$1,000</button>
+                    <button type="button" onclick="setQuickDeposit(5000)" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-xs font-semibold text-slate-600 hover:text-brand-600 transition-all">+$5,000</button>
+                  </div>
+
+                  <div class="pt-4 border-t border-slate-100 flex items-center justify-end">
+                    <button type="submit" class="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20 flex items-center gap-2">
+                      <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                      Confirm Virtual Deposit
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- 3. FREELANCER DASHBOARD VIEW (SPA Shell) -->
+    <!-- ======================================================== -->
+    <section id="freelancer-dashboard-section" class="w-full hidden flex-col flex-grow bg-slate-50 animate-fade-in">
+      <!-- Dashboard Top Header -->
+      <header class="sticky top-0 z-40 glass-header w-full border-b border-slate-200 px-4 py-4 md:px-8 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-950/25">
+            <i data-lucide="laptop" class="w-5 h-5 text-brand-500"></i>
+          </div>
+          <div>
+            <span class="text-xl font-bold tracking-tight text-slate-900">LancerLink</span>
+            <span class="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-brand-600 text-white tracking-wide uppercase">Freelancer Hub</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Earnings Wallet Pill -->
+          <div class="wallet-glow flex items-center gap-2 bg-white border border-slate-200 pl-3 pr-2 py-1.5 rounded-full shadow-sm">
+            <span class="text-[10px] uppercase font-bold text-slate-400 font-sans">Earnings</span>
+            <span id="freelancer-wallet-display" class="font-extrabold text-brand-600 text-sm md:text-base">$0.00</span>
+            <button onclick="switchTab('freelancer', 'earnings')" class="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition-all hover:scale-105 active:scale-95" title="Withdraw earnings">
+              <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Profile & Logout Dropdown simulation -->
+          <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
+            <div class="text-right hidden sm:block">
+              <p id="freelancer-username-display" class="text-sm font-bold text-slate-950">Alex Mercer</p>
+              <p class="text-[10px] text-slate-400 font-semibold">Active Developer</p>
+            </div>
+            <button onclick="logout()" class="w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-500 hover:text-red-500 transition-all flex items-center justify-center shadow-sm" title="Log Out">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Layout Content -->
+      <div class="flex-grow flex flex-col md:flex-row">
+        <!-- Sidebar Navigation -->
+        <nav class="w-full md:w-64 bg-white border-r border-slate-200 p-6 flex flex-col justify-between shrink-0">
+          <div class="space-y-6">
+            <div>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-3">Navigation</p>
+              <ul class="space-y-1.5">
+                <li>
+                  <button onclick="switchTab('freelancer', 'find-work')" id="freelancer-tab-find-work-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 bg-brand-50 text-brand-700">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                    Find Work Portal
+                  </button>
+                </li>
+                <li>
+                  <button onclick="switchTab('freelancer', 'workspace')" id="freelancer-tab-workspace-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+                    <i data-lucide="briefcase" class="w-4 h-4"></i>
+                    Active Workspace
+                  </button>
+                </li>
+                <li>
+                  <button onclick="switchTab('freelancer', 'earnings')" id="freelancer-tab-earnings-btn" class="w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800">
+                    <i data-lucide="piggy-bank" class="w-4 h-4"></i>
+                    Earnings & Wallet
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Platform Quick Stats Card -->
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escrow Security</span>
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs font-semibold text-slate-600">Pending Escrow</span>
+                <span id="freelancer-locked-funds-display" class="text-sm font-extrabold text-brand-600">$0.00</span>
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-1.5 mt-3 overflow-hidden">
+                <div id="freelancer-locked-funds-bar" class="bg-brand-500 h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version Footnote -->
+          <div class="mt-8 text-center text-[10px] text-slate-400 font-semibold border-t border-slate-100 pt-4 hidden md:block">
+            LancerLink Suite v1.2.0<br>&copy; 2026 DevLedger Group
+          </div>
+        </nav>
+
+        <!-- Dynamic Main Content Panels -->
+        <main class="flex-grow p-6 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+          
+          <!-- TAB: Find Work Feed -->
+          <div id="freelancer-tab-find-work" class="tab-content active space-y-8">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Available Contracts</h2>
+                <p class="text-sm text-slate-500 font-medium">Bid on high-budget projects secured with locked-in smart digital escrow pools.</p>
+              </div>
+            </div>
+
+            <!-- Search, Filter, Query Row -->
+            <div class="flex flex-col md:flex-row gap-4">
+              <div class="relative flex-grow">
+                <span class="absolute left-4 top-3.5 text-slate-400">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </span>
+                <input type="text" id="work-search" oninput="renderLiveProjectFeed()" placeholder="Search project keywords, descriptions, titles..." 
+                  class="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white custom-shadow">
+              </div>
+              <div class="w-full md:w-64 shrink-0">
+                <select id="work-filter-category" onchange="renderLiveProjectFeed()" 
+                  class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white custom-shadow">
+                  <option value="">All Domain Categories</option>
+                  <option value="Web Development">Web Development</option>
+                  <option value="Mobile Applications">Mobile Applications</option>
+                  <option value="Brand Design">Brand Design & Illustration</option>
+                  <option value="Copywriting & Marketing">Copywriting & Marketing</option>
+                  <option value="Database Engineering">Database Engineering</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Open Project feed renderer -->
+            <div id="freelancer-feed-container" class="grid grid-cols-1 gap-6">
+              <!-- Render via app.js -->
+            </div>
+          </div>
+
+          <!-- TAB: Freelancer Workspace -->
+          <div id="freelancer-tab-workspace" class="tab-content space-y-6">
+            <div>
+              <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Active Works Workspace</h2>
+              <p class="text-sm text-slate-500 font-medium font-sans">Track contracts you are hired on, submit milestones, and await payment triggers.</p>
+            </div>
+
+            <div id="freelancer-workspace-container" class="grid grid-cols-1 gap-6">
+              <!-- Render via app.js -->
+            </div>
+          </div>
+
+          <!-- TAB: Earnings & Wallet -->
+          <div id="freelancer-tab-earnings" class="tab-content space-y-6">
+            <div>
+              <h2 class="text-3xl font-extrabold text-slate-950 tracking-tight">Financial Office</h2>
+              <p class="text-sm text-slate-500 font-medium">Verify your balance ledger, trace completed project revenues, and request payouts.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
+              <!-- Core Wallet Display -->
+              <div class="bg-gradient-to-br from-slate-900 via-slate-950 to-brand-950 rounded-3xl p-8 text-white relative overflow-hidden custom-shadow col-span-1">
+                <div class="absolute -right-4 -bottom-4 w-44 h-44 bg-brand-500/15 rounded-full blur-2xl"></div>
+                <div class="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mb-6 border border-white/10">
+                  <i data-lucide="piggy-bank" class="w-6 h-6 text-brand-400"></i>
+                </div>
+                <p class="text-xs uppercase font-bold tracking-wider text-slate-400 mb-1">Available Freelance Income</p>
+                <h3 id="wallet-portal-freelancer-balance" class="text-4xl font-extrabold tracking-tight mb-2">$0.00</h3>
+                <p class="text-[10px] text-slate-400 font-medium flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5 text-brand-400"></i>
+                  Sandbox credentials secured.
+                </p>
+              </div>
+
+              <!-- Payout Request form -->
+              <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 custom-shadow col-span-2 space-y-6">
+                <h3 class="text-xl font-bold text-slate-950">Withdraw Sandbox Capital</h3>
+                <form id="withdraw-form" class="space-y-4" onsubmit="handleWithdraw(event)">
+                  <div class="space-y-2">
+                    <label for="withdraw-bank" class="text-sm font-bold text-slate-800">
+                      Destination Bank Route
+                    </label>
+                    <select id="withdraw-bank" required class="w-full px-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white">
+                      <option value="Demo-Chase">Chase Bank Savings (*4421)</option>
+                      <option value="Demo-BOA">Bank of America Checking (*9012)</option>
+                      <option value="Demo-Stripe">Stripe Direct Wallet Integration</option>
+                      <option value="Demo-Crypto">USD Coin Ledger Address (TRC-20)</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-2">
+                    <label for="withdraw-amount" class="text-sm font-bold text-slate-800">
+                      Amount to Withdraw (USD)
+                    </label>
+                    <div class="relative">
+                      <span class="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
+                      <input type="number" id="withdraw-amount" required min="10" placeholder="e.g. 500" 
+                        class="w-full pl-8 pr-4 py-3.5 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-semibold transition-all">
+                    </div>
+                  </div>
+
+                  <div class="pt-4 border-t border-slate-100 flex items-center justify-end">
+                    <button type="submit" class="px-6 py-3 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20 flex items-center gap-2">
+                      <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
+                      Confirm Simulated Withdrawal
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ======================================================== -->
+  <!-- 4. DYNAMIC MODALS SECTION -->
+  <!-- ======================================================== -->
+
+  <!-- AUTHENTICATION FORM MODAL -->
+  <div id="auth-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-md overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      
+      <!-- Close modal button -->
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div id="auth-role-badge" class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-brand-600 text-white mb-2">CLIENT</div>
+        <h3 id="auth-modal-title" class="text-2xl font-bold text-slate-950">Join LancerLink</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Simulate authentication flow directly in localStorage.</p>
+      </div>
+
+      <!-- Auth Tab Selectors -->
+      <div class="flex border-b border-slate-100">
+        <button onclick="toggleAuthTab('signup')" id="auth-tab-signup" class="flex-1 py-3 text-center text-sm font-bold border-b-2 border-brand-600 text-brand-600 transition-all">Create Account</button>
+        <button onclick="toggleAuthTab('login')" id="auth-tab-login" class="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-700 transition-all">Existing Sign-In</button>
+      </div>
+
+      <!-- Forms Body -->
+      <div class="p-6 md:p-8">
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+          <!-- Signup Only: Full Name Field -->
+          <div id="auth-field-name" class="space-y-1">
+            <label for="auth-name" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Display Name</label>
+            <input type="text" id="auth-name" placeholder="John Doe" 
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all">
+          </div>
+
+          <div class="space-y-1">
+            <label for="auth-email" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Sandbox Email</label>
+            <input type="email" id="auth-email" required placeholder="john@example.com" 
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all">
+          </div>
+
+          <div class="space-y-1">
+            <label for="auth-password" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+            <input type="password" id="auth-password" required placeholder="••••••••" 
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all">
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="w-full py-3.5 px-6 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20">
+            Confirm & Enter Sandbox
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FREELANCER BID PLACEMENT MODAL -->
+  <div id="bid-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-lg overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      
+      <!-- Close modal button -->
+      <button onclick="closeBidModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-brand-600 text-white mb-2">SUBMIT PROPOSAL</div>
+        <h3 id="bid-modal-project-title" class="text-2xl font-bold text-slate-950">Project Title Here</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Client: <span id="bid-modal-client-name" class="font-bold text-slate-500">Jane Cooper</span> &bull; Budget limit: <span id="bid-modal-project-budget" class="font-bold text-emerald-600">$500</span></p>
+      </div>
+
+      <!-- Modal Body Form -->
+      <div class="p-6 md:p-8">
+        <form id="bid-form" onsubmit="handleBidSubmit(event)" class="space-y-4">
+          <input type="hidden" id="bid-project-id">
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label for="bid-amount" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Your Proposal Bid (USD)</label>
+              <div class="relative">
+                <span class="absolute left-4 top-3 text-slate-400 font-bold text-sm">$</span>
+                <input type="number" id="bid-amount" required min="10" placeholder="450" 
+                  class="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-semibold transition-all">
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <label for="bid-timeline" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Estimated Duration</label>
+              <select id="bid-timeline" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white">
+                <option value="1 Day">1 Day (Express)</option>
+                <option value="3 Days">3 Days</option>
+                <option value="5 Days">5 Days</option>
+                <option value="1 Week">1 Week</option>
+                <option value="2 Weeks">2 Weeks</option>
+                <option value="1 Month">1 Month</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label for="bid-pitch" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Bespoke Pitch / Methodology</label>
+            <textarea id="bid-pitch" required rows="4" placeholder="Briefly present your expertise, how you plan to complete this job, and what your milestones look like..."
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+          </div>
+
+          <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20 flex items-center justify-center gap-2">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            Commit & Send Proposal
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SIMULATED MOCK WORK SUBMISSION MODAL -->
+  <div id="submit-work-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-md overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      
+      <!-- Close modal button -->
+      <button onclick="closeSubmitWorkModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-indigo-600 text-white mb-2">DELIVER CONTRACT WORK</div>
+        <h3 id="submit-work-project-title" class="text-2xl font-bold text-slate-950">Project Title</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Hired rate: <span id="submit-work-project-budget" class="font-bold text-emerald-600">$500</span></p>
+      </div>
+
+      <!-- Modal Body Form -->
+      <div class="p-6 md:p-8">
+        <form id="submit-work-form" onsubmit="handleSubmitWork(event)" class="space-y-4">
+          <input type="hidden" id="submit-work-project-id">
+          
+          <div class="space-y-1">
+            <label for="submit-file-type" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Simulated File Format</label>
+            <select id="submit-file-type" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white">
+              <option value="final_logo.zip">Asset Package (ZIP / RAR)</option>
+              <option value="codebase_final.zip">Source Code Archive (ZIP)</option>
+              <option value="brand_guidelines.pdf">Documentation Portfolio (PDF)</option>
+              <option value="mockup_presentation.png">High-Res Design (PNG / JPG)</option>
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="submit-filename" class="text-xs font-bold text-slate-700 uppercase tracking-wider">File Name Assignment</label>
+            <input type="text" id="submit-filename" required placeholder="e.g. lancerlink_final_deliverable.zip" 
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all font-mono">
+          </div>
+
+          <div class="space-y-1">
+            <label for="submit-comment" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Submission Remarks</label>
+            <textarea id="submit-comment" required rows="3" placeholder="Provide details on how to inspect this deliverable, passwords if encrypted, or brief notes for client review..."
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+          </div>
+
+          <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-500/20 flex items-center justify-center gap-2">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            Commit Sandbox Delivery
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Lucide Icons Script Import -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Core Logic Engine Script -->
+  <script src="app.js"></script>
+</body>
+</html>
