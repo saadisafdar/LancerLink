@@ -1,178 +1,114 @@
 /**
- * LancerLink Core Application Engine
- * Pure Vanilla ES6+ State & LocalStorage Ledger System
+ * LancerLink Full-Stack Frontend Engine
+ * Real Server-Backed State & Security Integration
  */
 
-// Global Application Database & State Model
-let db = {
-  users: [],
-  projects: [],
-  bids: [],
-  activeSession: null // Stores current logged-in user object { id, role }
-};
+// Global Frontend State
+let currentUser = null;
+let csrfToken = "";
+let chatPollInterval = null;
+let globalPollInterval = null;
 
-// Seeding Initial Mock Data to wow users instantly on first load
-const SEED_DATA = {
-  users: [
-    {
-      id: "usr_client_jane",
-      email: "jane@lancerlink.co",
-      password: "password123",
-      name: "Jane Cooper",
-      role: "client",
-      wallet: 3500.00
-    },
-    {
-      id: "usr_free_alex",
-      email: "alex@lancerlink.co",
-      password: "password123",
-      name: "Alex Mercer",
-      role: "freelancer",
-      wallet: 850.00
-    },
-    {
-      id: "usr_free_sarah",
-      email: "sarah@lancerlink.co",
-      password: "password123",
-      name: "Sarah Jenkins",
-      role: "freelancer",
-      wallet: 0.00
-    }
-  ],
-  projects: [
-    {
-      id: "proj_seed_1",
-      title: "Custom FinTech Dashboard UI Layout",
-      description: "Looking for an expert brand and UI designer to craft a gorgeous White & Green design scheme for our web SaaS. Requires 15 high-fidelity wireframes in Figma with modern layout standards. Budget must include revisions.",
-      category: "Brand Design",
-      budget: 1200,
-      clientId: "usr_client_jane",
-      clientName: "Jane Cooper",
-      createdAt: "2026-05-20T10:15:30.000Z",
-      status: "open",
-      hiredFreelancerId: null,
-      hiredBidId: null,
-      submittedFile: null,
-      submittedComment: null,
-      submittedAt: null
-    },
-    {
-      id: "proj_seed_2",
-      title: "Scale MySQL Database Schema for Logistics CRM",
-      description: "Our current fleet tracking system is hitting bottleneck errors. Need a database engineer to optimize index parameters, restructure foreign keys, and write scalable clean migration scripts.",
-      category: "Database Engineering",
-      budget: 2500,
-      clientId: "usr_client_jane",
-      clientName: "Jane Cooper",
-      createdAt: "2026-05-19T08:45:00.000Z",
-      status: "hired",
-      hiredFreelancerId: "usr_free_alex",
-      hiredBidId: "bid_seed_alex",
-      submittedFile: null,
-      submittedComment: null,
-      submittedAt: null
-    },
-    {
-      id: "proj_seed_3",
-      title: "Mobile App for Local Courier Service",
-      description: "Develop a lightweight geolocational React Native or Flutter application to handle package tracking and customer delivery sheets. Clean modular backend hooks are pre-built.",
-      category: "Mobile Applications",
-      budget: 3000,
-      clientId: "usr_client_jane",
-      clientName: "Jane Cooper",
-      createdAt: "2026-05-21T11:00:00.000Z",
-      status: "submitted",
-      hiredFreelancerId: "usr_free_alex",
-      hiredBidId: "bid_seed_mobile",
-      submittedFile: "courier_app_v1_0.zip",
-      submittedComment: "All source files packaged. Live prototype link is embedded inside the readme file. Awaiting your approval!",
-      submittedAt: "2026-05-21T18:30:00.000Z"
-    }
-  ],
-  bids: [
-    {
-      id: "bid_seed_alex",
-      projectId: "proj_seed_1",
-      freelancerId: "usr_free_alex",
-      freelancerName: "Alex Mercer",
-      amount: 1100,
-      timeline: "5 Days",
-      pitch: "Hi Jane! I love white & green visual systems. I have built 4 SaaS financial interfaces with gorgeous custom styling and highly fluid grids. Let me know if you would like to see my catalog.",
-      createdAt: "2026-05-20T12:30:00.000Z"
-    },
-    {
-      id: "bid_seed_sarah",
-      projectId: "proj_seed_1",
-      freelancerId: "usr_free_sarah",
-      freelancerName: "Sarah Jenkins",
-      amount: 1200,
-      timeline: "1 Week",
-      pitch: "Hey there. I specialize in luxury minimalist corporate systems. I can translate your brand guides into responsive vectors directly. Ready to start immediately.",
-      createdAt: "2026-05-20T14:10:00.000Z"
-    },
-    {
-      id: "bid_seed_mobile",
-      projectId: "proj_seed_3",
-      freelancerId: "usr_free_alex",
-      freelancerName: "Alex Mercer",
-      amount: 3000,
-      timeline: "2 Weeks",
-      pitch: "Hired at standard price point.",
-      createdAt: "2026-05-21T11:15:00.000Z"
-    }
-  ]
-};
+let activeChatProjectId = null;
+let activeChatFreelancerId = null;
+let activeChatLastId = 0;
+let isChatPollerActive = false;
 
-// Current Authentication Form State Helpers
-let currentAuthRole = "client"; // "client" or "freelancer"
-let currentAuthTab = "signup";   // "signup" or "login"
+let selectedReviewRating = 0;
 
 // ========================================================
 // INITIALIZATION ENGINE
 // ========================================================
 document.addEventListener("DOMContentLoaded", () => {
-  initDatabase();
   checkExistingSession();
-  lucide.createIcons();
 });
 
-// Database LocalStorage Engine Syncing
-function initDatabase() {
-  const localDb = localStorage.getItem("lancerlink_db");
-  if (localDb) {
-    try {
-      db = JSON.parse(localDb);
-    } catch (e) {
-      console.error("Database corruption detected. Re-initializing database...", e);
-      resetDatabaseToSeed();
-    }
-  } else {
-    resetDatabaseToSeed();
-  }
-}
-
-function resetDatabaseToSeed() {
-  db = JSON.parse(JSON.stringify(SEED_DATA));
-  saveDatabase();
-}
-
-function saveDatabase() {
-  localStorage.setItem("lancerlink_db", JSON.stringify(db));
-}
-
 // Session Check on Application Startup
-function checkExistingSession() {
-  if (db.activeSession) {
-    const user = db.users.find(u => u.id === db.activeSession.id);
-    if (user) {
-      // Re-login current user
-      loginUser(user, db.activeSession.role);
+async function checkExistingSession() {
+  try {
+    const res = await apiRequest("/api/auth/me");
+    if (res.success) {
+      currentUser = res.data.user;
+      csrfToken = res.data.csrf_token;
+      loginUser(currentUser, currentUser.role);
     } else {
-      logout();
+      logoutSessionCleanup();
     }
-  } else {
-    showView("welcome-section");
+  } catch (err) {
+    logoutSessionCleanup();
   }
+}
+
+// Clean up local session state and timers
+function logoutSessionCleanup() {
+  currentUser = null;
+  csrfToken = "";
+  
+  if (chatPollInterval) {
+    clearInterval(chatPollInterval);
+    chatPollInterval = null;
+  }
+  if (globalPollInterval) {
+    clearInterval(globalPollInterval);
+    globalPollInterval = null;
+  }
+  isChatPollerActive = false;
+  
+  showView("welcome-section");
+}
+
+// ========================================================
+// REUSABLE API REQUEST HELPER
+// ========================================================
+async function apiRequest(url, options = {}) {
+  options.credentials = "same-origin";
+  
+  if (!options.headers) {
+    options.headers = {};
+  }
+  
+  if (options.body && typeof options.body === "object") {
+    options.body = JSON.stringify(options.body);
+    options.headers["Content-Type"] = "application/json";
+  }
+  
+  if (csrfToken) {
+    options.headers["X-CSRF-Token"] = csrfToken;
+  }
+  
+  try {
+    const response = await fetch(url, options);
+    
+    if (response.status === 401) {
+      logoutSessionCleanup();
+      showToast("Session expired. Please sign in again.", "error");
+      throw new Error("Session expired");
+    }
+    
+    const json = await response.json();
+    if (!response.ok) {
+      throw new Error(json.error || `HTTP error! Status: ${response.status}`);
+    }
+    
+    return json;
+  } catch (err) {
+    console.error(`API Error [${url}]:`, err);
+    if (err.message !== "Session expired") {
+      showToast(err.message || "Network request failed", "error");
+    }
+    throw err;
+  }
+}
+
+// Escaping helper for user-generated content injection prevention
+function escapeHtml(str) {
+  if (!str) return "";
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 // ========================================================
@@ -206,12 +142,10 @@ function showToast(message, type = "success") {
     </button>
   `;
 
-  // Apply colors dynamically
   toast.classList.add(...border.split(" "));
   container.appendChild(toast);
   lucide.createIcons();
 
-  // Self destruction timeout
   setTimeout(() => {
     toast.classList.add("hide");
     toast.addEventListener("animationend", () => {
@@ -241,45 +175,50 @@ function showView(viewId) {
 }
 
 function switchTab(role, tabName) {
-  // Hide all tab contents for this role
   const contents = document.querySelectorAll(`#${role}-dashboard-section .tab-content`);
   contents.forEach(c => {
     c.classList.remove("active");
   });
 
-  // Deactivate all sidebar tab buttons
   const buttons = document.querySelectorAll(`#${role}-dashboard-section nav button`);
   buttons.forEach(b => {
     b.className = "w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800";
   });
 
-  // Activate selected tab content
   const targetContent = document.getElementById(`${role}-tab-${tabName}`);
   if (targetContent) {
     targetContent.classList.add("active");
   }
 
-  // Activate selected sidebar button
   const targetBtn = document.getElementById(`${role}-tab-${tabName}-btn`);
   if (targetBtn) {
     targetBtn.className = "w-full px-4 py-3 rounded-2xl text-left font-semibold text-sm flex items-center gap-3 transition-all duration-200 bg-brand-50 text-brand-700 shadow-sm border border-brand-100/40";
   }
 
+  // Save tab selection preference
+  localStorage.setItem(`lancerlink_last_tab_${role}`, tabName);
+
   lucide.createIcons();
   
-  // Specific Renders depending on tab activation
   if (role === "client" && tabName === "my-projects") {
     renderClientProjects();
+  } else if (role === "client" && tabName === "wallet-portal") {
+    refreshWalletAndTransactions("client");
   } else if (role === "freelancer" && tabName === "find-work") {
     renderLiveProjectFeed();
   } else if (role === "freelancer" && tabName === "workspace") {
     renderFreelancerWorkspace();
+  } else if (role === "freelancer" && tabName === "earnings") {
+    refreshWalletAndTransactions("freelancer");
   }
 }
 
 // ========================================================
 // AUTHENTICATION CONTROLLERS
 // ========================================================
+let currentAuthRole = "client";
+let currentAuthTab = "signup";
+
 function openAuthModal(role) {
   currentAuthRole = role;
   currentAuthTab = "signup";
@@ -288,7 +227,6 @@ function openAuthModal(role) {
   const modalTitle = document.getElementById("auth-modal-title");
   const roleBadge = document.getElementById("auth-role-badge");
   
-  // Set badge and header
   if (role === "client") {
     roleBadge.textContent = "CLIENT PORTAL";
     roleBadge.className = "inline-flex px-2.5 py-1 rounded-xl text-[9px] font-extrabold uppercase bg-brand-600 text-white mb-2 shadow-sm shadow-brand-600/10";
@@ -301,7 +239,6 @@ function openAuthModal(role) {
 
   modal.classList.remove("hidden");
   modal.classList.add("flex");
-  
   toggleAuthTab("signup");
 }
 
@@ -309,8 +246,6 @@ function closeAuthModal() {
   const modal = document.getElementById("auth-modal");
   modal.classList.remove("flex");
   modal.classList.add("hidden");
-  
-  // Clear forms
   document.getElementById("auth-form").reset();
 }
 
@@ -338,127 +273,165 @@ function toggleAuthTab(tab) {
   }
 }
 
-function handleAuthSubmit(event) {
+async function handleAuthSubmit(event) {
   event.preventDefault();
   
   const emailInput = document.getElementById("auth-email").value.trim().toLowerCase();
   const passwordInput = document.getElementById("auth-password").value;
   const nameInput = document.getElementById("auth-name").value.trim();
   
+  const url = currentAuthTab === "signup" ? "/api/auth/register" : "/api/auth/login";
+  const payload = {
+    email: emailInput,
+    password: passwordInput,
+    role: currentAuthRole
+  };
+  
   if (currentAuthTab === "signup") {
-    // Signup Simulation
-    // Verify user doesn't already exist
-    const userExists = db.users.some(u => u.email === emailInput && u.role === currentAuthRole);
-    if (userExists) {
-      showToast("An account with this email already exists for this role.", "error");
-      return;
-    }
-
-    const newUser = {
-      id: "usr_" + Date.now(),
-      email: emailInput,
-      password: passwordInput,
-      name: nameInput || "Un-named Ledger Entity",
-      role: currentAuthRole,
-      wallet: 0.00 // Default virtual balance of $0
-    };
-
-    db.users.push(newUser);
-    saveDatabase();
-    
-    showToast(`Account registered successfully as ${newUser.name}!`, "success");
-    loginUser(newUser, currentAuthRole);
-  } else {
-    // Login Simulation
-    const matchedUser = db.users.find(u => u.email === emailInput && u.password === passwordInput && u.role === currentAuthRole);
-    if (!matchedUser) {
-      showToast("Invalid credentials or matching role not found.", "error");
-      return;
-    }
-
-    showToast(`Welcome back, ${matchedUser.name}!`, "success");
-    loginUser(matchedUser, currentAuthRole);
+    payload.name = nameInput || "Ledger Entity";
   }
 
-  closeAuthModal();
+  try {
+    const res = await apiRequest(url, {
+      method: "POST",
+      body: payload
+    });
+
+    if (res.success) {
+      currentUser = res.data.user;
+      csrfToken = res.data.csrf_token;
+      showToast(currentAuthTab === "signup" ? "Account registered successfully!" : `Welcome back, ${currentUser.name}!`, "success");
+      loginUser(currentUser, currentAuthRole);
+      closeAuthModal();
+    }
+  } catch (err) {
+    // Errors handled by apiRequest toast
+  }
 }
 
 function loginUser(user, role) {
-  db.activeSession = {
-    id: user.id,
-    role: role
-  };
-  saveDatabase();
+  // Start Global Polling for Notifications and Conversations list every 15 seconds
+  if (globalPollInterval) clearInterval(globalPollInterval);
+  globalPollInterval = setInterval(pollGlobalUpdates, 15000);
+  pollGlobalUpdates(); // initial run
+
+  const savedTab = localStorage.getItem(`lancerlink_last_tab_${role}`);
 
   if (role === "client") {
-    // Setup Client Displays
     document.getElementById("client-username-display").textContent = user.name;
-    updateClientWalletDisplay(user);
+    updateClientWalletPills(user.wallet_cents);
     showView("client-dashboard-section");
-    switchTab("client", "my-projects");
+    switchTab("client", savedTab || "my-projects");
   } else {
-    // Setup Freelancer Displays
     document.getElementById("freelancer-username-display").textContent = user.name;
-    updateFreelancerWalletDisplay(user);
+    updateFreelancerWalletPills(user.wallet_cents);
     showView("freelancer-dashboard-section");
-    switchTab("freelancer", "find-work");
+    switchTab("freelancer", savedTab || "find-work");
   }
 }
 
-function logout() {
-  db.activeSession = null;
-  saveDatabase();
-  showView("welcome-section");
+async function logout() {
+  try {
+    await apiRequest("/api/auth/logout", { method: "POST" });
+  } catch (err) {}
+  logoutSessionCleanup();
   showToast("Logged out successfully.", "info");
 }
 
 // ========================================================
-// CLIENT SIDE INTERACTION LOGIC
+// WALLET MANAGEMENT
 // ========================================================
-function updateClientWalletDisplay(user) {
-  const activeUser = user || db.users.find(u => u.id === db.activeSession.id);
+function updateClientWalletPills(walletCents) {
+  const usd = (walletCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const display = document.getElementById("client-wallet-display");
   const portalDisplay = document.getElementById("wallet-portal-client-balance");
   
-  if (display && activeUser) display.textContent = `$${activeUser.wallet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (portalDisplay && activeUser) portalDisplay.textContent = `$${activeUser.wallet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-  // Update locked escrow funds quick stats
-  updateClientEscrowStats(activeUser);
+  if (display) display.textContent = `$${usd}`;
+  if (portalDisplay) portalDisplay.textContent = `$${usd}`;
 }
 
-function updateClientEscrowStats(user) {
-  const clientProjects = db.projects.filter(p => p.clientId === user.id);
+function updateFreelancerWalletPills(walletCents) {
+  const usd = (walletCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const display = document.getElementById("freelancer-wallet-display");
+  const portalDisplay = document.getElementById("wallet-portal-freelancer-balance");
   
-  // Locked funds = Projects Hired/Submitted but not Completed yet
-  let lockedFunds = 0;
-  clientProjects.forEach(p => {
-    if (p.status === "hired" || p.status === "submitted") {
-      // Find matching bid that was hired
-      const matchingBid = db.bids.find(b => b.id === p.hiredBidId);
-      if (matchingBid) {
-        lockedFunds += matchingBid.amount;
+  if (display) display.textContent = `$${usd}`;
+  if (portalDisplay) portalDisplay.textContent = `$${usd}`;
+}
+
+async function refreshWalletAndTransactions(role) {
+  try {
+    const res = await apiRequest("/api/wallet/transactions");
+    const profileRes = await apiRequest("/api/auth/me");
+    
+    if (profileRes.success) {
+      currentUser = profileRes.data.user;
+      if (role === "client") {
+        updateClientWalletPills(currentUser.wallet_cents);
+        updateClientEscrowStats();
+      } else {
+        updateFreelancerWalletPills(currentUser.wallet_cents);
+        updateFreelancerEscrowStats();
       }
     }
-  });
 
-  const lockedDisplay = document.getElementById("client-locked-funds-display");
-  const lockedBar = document.getElementById("client-locked-funds-bar");
-
-  if (lockedDisplay) {
-    lockedDisplay.textContent = `$${lockedFunds.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  
-  if (lockedBar) {
-    // Display proportion of locked funds relative to client's liquid balance
-    const totalFundsVal = user.wallet + lockedFunds;
-    const pct = totalFundsVal > 0 ? (lockedFunds / totalFundsVal) * 100 : 0;
-    lockedBar.style.width = `${pct}%`;
-  }
+    if (res.success) {
+      renderTransactionsList(role, res.data.transactions);
+    }
+  } catch (err) {}
 }
 
-// Deposit dummy funds into client wallet
-function handleDeposit(event) {
+async function updateClientEscrowStats() {
+  try {
+    const res = await apiRequest(`/api/projects?client_id=${currentUser.id}`);
+    if (res.success) {
+      let lockedFundsCents = 0;
+      res.data.projects.forEach(p => {
+        if (p.status === "hired" || p.status === "submitted" || p.status === "revision_requested") {
+          lockedFundsCents += p.escrow_cents;
+        }
+      });
+
+      const usd = (lockedFundsCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const lockedDisplay = document.getElementById("client-locked-funds-display");
+      const lockedBar = document.getElementById("client-locked-funds-bar");
+
+      if (lockedDisplay) lockedDisplay.textContent = `$${usd}`;
+      if (lockedBar) {
+        const totalCents = currentUser.wallet_cents + lockedFundsCents;
+        const pct = totalCents > 0 ? (lockedFundsCents / totalCents) * 100 : 0;
+        lockedBar.style.width = `${pct}%`;
+      }
+    }
+  } catch (err) {}
+}
+
+async function updateFreelancerEscrowStats() {
+  try {
+    const res = await apiRequest(`/api/projects?hired_freelancer_id=${currentUser.id}`);
+    if (res.success) {
+      let pendingEscrowCents = 0;
+      res.data.projects.forEach(p => {
+        if (p.status === "hired" || p.status === "submitted" || p.status === "revision_requested") {
+          pendingEscrowCents += p.escrow_cents;
+        }
+      });
+
+      const usd = (pendingEscrowCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const display = document.getElementById("freelancer-locked-funds-display");
+      const bar = document.getElementById("freelancer-locked-funds-bar");
+
+      if (display) display.textContent = `$${usd}`;
+      if (bar) {
+        const totalCents = currentUser.wallet_cents + pendingEscrowCents;
+        const pct = totalCents > 0 ? (pendingEscrowCents / totalCents) * 100 : 0;
+        bar.style.width = `${pct}%`;
+      }
+    }
+  } catch (err) {}
+}
+
+async function handleDeposit(event) {
   event.preventDefault();
   const amtInput = document.getElementById("deposit-amount");
   const depositVal = parseFloat(amtInput.value);
@@ -468,14 +441,20 @@ function handleDeposit(event) {
     return;
   }
 
-  const user = db.users.find(u => u.id === db.activeSession.id);
-  if (user) {
-    user.wallet += depositVal;
-    saveDatabase();
-    updateClientWalletDisplay(user);
-    showToast(`Instantly deposited $${depositVal.toLocaleString()} into your virtual wallet!`, "success");
-    amtInput.value = "";
-  }
+  try {
+    const res = await apiRequest("/api/wallet/deposit", {
+      method: "POST",
+      body: { amount: depositVal }
+    });
+
+    if (res.success) {
+      currentUser.wallet_cents = res.data.wallet_cents;
+      updateClientWalletPills(currentUser.wallet_cents);
+      showToast(`Instantly deposited $${depositVal.toLocaleString()} into your virtual wallet!`, "success");
+      amtInput.value = "";
+      refreshWalletAndTransactions("client");
+    }
+  } catch (err) {}
 }
 
 function setQuickDeposit(amount) {
@@ -486,8 +465,79 @@ function openDepositModal() {
   switchTab("client", "wallet-portal");
 }
 
-// Client Project Creation Flow
-function handlePostProject(event) {
+async function handleWithdraw(event) {
+  event.preventDefault();
+  const amtInput = document.getElementById("withdraw-amount");
+  const routeSelect = document.getElementById("withdraw-bank");
+  const amountVal = parseFloat(amtInput.value);
+
+  if (isNaN(amountVal) || amountVal <= 0) {
+    showToast("Please enter a valid withdrawal amount.", "error");
+    return;
+  }
+
+  try {
+    const res = await apiRequest("/api/wallet/withdraw", {
+      method: "POST",
+      body: {
+        amount: amountVal,
+        bank_route: routeSelect.value
+      }
+    });
+
+    if (res.success) {
+      currentUser.wallet_cents = res.data.wallet_cents;
+      updateFreelancerWalletPills(currentUser.wallet_cents);
+      showToast(`Simulated withdrawal of $${amountVal.toLocaleString()} completed successfully.`, "success");
+      amtInput.value = "";
+      refreshWalletAndTransactions("freelancer");
+    }
+  } catch (err) {}
+}
+
+function renderTransactionsList(role, txs) {
+  const container = document.getElementById(`${role}-transactions-list`);
+  if (!container) return;
+
+  if (txs.length === 0) {
+    container.innerHTML = `<div class="p-6 text-center text-xs text-slate-400 font-semibold">No transactions found in sandbox ledger.</div>`;
+    return;
+  }
+
+  let html = "";
+  txs.forEach(t => {
+    const amountUsd = t.amount_cents / 100;
+    const absVal = Math.abs(amountUsd).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const isOutflow = t.amount_cents < 0;
+    const sign = isOutflow ? "-" : "+";
+    const color = isOutflow ? "text-slate-600 font-semibold" : "text-emerald-600 font-bold";
+    const dateStr = new Date(t.created_at).toLocaleString();
+    
+    // Project reference title if exists
+    const projectRef = t.project_title ? ` &bull; Ref: <span class="font-bold text-slate-700">${escapeHtml(t.project_title)}</span>` : "";
+
+    html += `
+      <div class="transaction-row">
+        <div>
+          <span class="text-xs uppercase font-extrabold tracking-wider bg-slate-100 text-slate-600 px-2 py-0.5 rounded mr-2">${t.transaction_type}</span>
+          <span class="text-slate-500 font-medium">${escapeHtml(t.description)}${projectRef}</span>
+          <p class="text-[10px] text-slate-400 font-semibold mt-1">${dateStr}</p>
+        </div>
+        <div class="text-right">
+          <span class="${color}">${sign}$${absVal}</span>
+          <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Bal: $${(t.balance_after_cents / 100).toLocaleString()}</p>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+// ========================================================
+// CLIENT WORKSPACE & PROJECTS LOGIC
+// ========================================================
+async function handlePostProject(event) {
   event.preventDefault();
 
   const title = document.getElementById("post-title").value.trim();
@@ -500,288 +550,436 @@ function handlePostProject(event) {
     return;
   }
 
-  const clientUser = db.users.find(u => u.id === db.activeSession.id);
+  try {
+    const res = await apiRequest("/api/projects", {
+      method: "POST",
+      body: { title, category, budget, description }
+    });
 
-  const newProject = {
-    id: "proj_" + Date.now(),
-    title: title,
-    description: description,
-    category: category,
-    budget: budget,
-    clientId: clientUser.id,
-    clientName: clientUser.name,
-    createdAt: new Date().toISOString(),
-    status: "open",
-    hiredFreelancerId: null,
-    hiredBidId: null,
-    submittedFile: null,
-    submittedComment: null,
-    submittedAt: null
-  };
-
-  db.projects.push(newProject);
-  saveDatabase();
-
-  showToast("New marketplace contract created successfully!", "success");
-  document.getElementById("post-project-form").reset();
-  
-  // Toggle tab and redraw
-  switchTab("client", "my-projects");
+    if (res.success) {
+      showToast("New marketplace contract published successfully!", "success");
+      document.getElementById("post-project-form").reset();
+      switchTab("client", "my-projects");
+    }
+  } catch (err) {}
 }
 
-// Dynamic Client Projects Rendering
-function renderClientProjects() {
+function renderProjectMilestones(p) {
+  if (!p.milestone || p.milestone < 1) {
+    return "";
+  }
+  
+  const steps = [
+    { num: 1, label: "Hired & Escrow" },
+    { num: 2, label: "Work Submitted" },
+    { num: 3, label: "Payment Released" },
+    { num: 4, label: "Mutual Feedback" }
+  ];
+  
+  let progressWidth = "0%";
+  if (p.milestone === 2) progressWidth = "33%";
+  else if (p.milestone === 3) progressWidth = "66%";
+  else if (p.milestone >= 4) progressWidth = "100%";
+  
+  let stepsHtml = "";
+  steps.forEach(s => {
+    let stateClass = "milestone-future";
+    let icon = s.num;
+    if (s.num < p.milestone) {
+      stateClass = "milestone-complete";
+      icon = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+    } else if (s.num === p.milestone) {
+      stateClass = "milestone-current";
+    }
+    
+    stepsHtml += `
+      <div class="milestone-step ${stateClass}">
+        <div class="milestone-circle">${icon}</div>
+        <div class="milestone-label">${s.label}</div>
+      </div>
+    `;
+  });
+  
+  return `
+    <div class="milestone-tracker">
+      <div class="milestone-line"></div>
+      <div class="milestone-line-progress" style="width: ${progressWidth}"></div>
+      ${stepsHtml}
+    </div>
+  `;
+}
+
+async function renderClientProjects() {
   const container = document.getElementById("client-projects-container");
   if (!container) return;
 
-  const myProjects = db.projects.filter(p => p.clientId === db.activeSession.id);
+  try {
+    const res = await apiRequest(`/api/projects?client_id=${currentUser.id}`);
+    if (!res.success) return;
 
-  // Compute tab stats count
-  document.getElementById("stat-client-open").textContent = myProjects.filter(p => p.status === "open").length;
-  document.getElementById("stat-client-hired").textContent = myProjects.filter(p => p.status === "hired").length;
-  document.getElementById("stat-client-review").textContent = myProjects.filter(p => p.status === "submitted").length;
-  document.getElementById("stat-client-completed").textContent = myProjects.filter(p => p.status === "completed").length;
+    const myProjects = res.data.projects;
 
-  if (myProjects.length === 0) {
-    container.innerHTML = `
-      <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow animate-fade-in-up">
-        <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
-          <i data-lucide="folder-open" class="w-8 h-8"></i>
+    // Mini Stats Bar Counters
+    document.getElementById("stat-client-open").textContent = myProjects.filter(p => p.status === "open").length;
+    document.getElementById("stat-client-hired").textContent = myProjects.filter(p => p.status === "hired").length;
+    document.getElementById("stat-client-review").textContent = myProjects.filter(p => p.status === "submitted" || p.status === "revision_requested").length;
+    document.getElementById("stat-client-completed").textContent = myProjects.filter(p => p.status === "completed").length;
+
+    if (myProjects.length === 0) {
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow">
+          <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
+            <i data-lucide="folder-open" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mb-1">No Projects Found</h3>
+          <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Create a contract proposal and submit it to our network of freelancers.</p>
+          <button onclick="switchTab('client', 'post-project')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-sm">
+            Create First Contract
+          </button>
         </div>
-        <h3 class="text-lg font-bold text-slate-900 mb-1">No Projects Found</h3>
-        <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Create a contract proposal and submit it to our worldwide network of high-caliber freelancers.</p>
-        <button onclick="switchTab('client', 'post-project')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-sm">
-          Create First Contract
-        </button>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
-  }
-
-  // Sort: open, submitted, hired, completed
-  const statusWeight = { "submitted": 1, "open": 2, "hired": 3, "completed": 4 };
-  myProjects.sort((a, b) => {
-    if (statusWeight[a.status] !== statusWeight[b.status]) {
-      return statusWeight[a.status] - statusWeight[b.status];
+      `;
+      lucide.createIcons();
+      return;
     }
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
 
-  let html = "";
+    // Sort status weights
+    const statusWeight = { "submitted": 1, "revision_requested": 1, "open": 2, "hired": 3, "completed": 4, "cancelled": 5 };
+    myProjects.sort((a, b) => {
+      if (statusWeight[a.status] !== statusWeight[b.status]) {
+        return statusWeight[a.status] - statusWeight[b.status];
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
 
-  myProjects.forEach(p => {
-    // Badges & styling by status
-    let statusBadge = "";
-    let borderStyle = "border-slate-200";
-    let footerHtml = "";
+    let html = "";
 
-    if (p.status === "open") {
-      statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 border border-blue-200 text-blue-600"><i data-lucide="search" class="w-3.5 h-3.5"></i> Open Bidding</span>`;
-      
-      // Check bids
-      const projBids = db.bids.filter(b => b.projectId === p.id);
-      if (projBids.length === 0) {
-        footerHtml = `
-          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold rounded-b-3xl">
-            <span>No proposals submitted yet</span>
-            <span class="flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i> Freelancers are viewing</span>
+    for (let p of myProjects) {
+      let statusBadge = "";
+      let borderStyle = "border-slate-200";
+      let footerHtml = "";
+
+      // Render 4-Stage Lifecycle Tracker HTML ( backend authoritative )
+      const milestonesTrackerHtml = renderProjectMilestones(p);
+
+      if (p.status === "open") {
+        statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 border border-blue-200 text-blue-600"><i data-lucide="search" class="w-3.5 h-3.5"></i> Open Bidding</span>`;
+        
+        // Fetch Bids from server
+        const bidsRes = await apiRequest(`/api/projects/${p.id}/bids`);
+        const projBids = bidsRes.success ? bidsRes.data.bids : [];
+
+        // Edit/Cancel action controls
+        const controlsHtml = `
+          <div class="flex gap-2">
+            <button onclick="openEditProjectModal('${p.id}')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-slate-600 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1">
+              <i data-lucide="pencil" class="w-3 h-3"></i> Edit Specs
+            </button>
+            <button onclick="handleCancelProject('${p.id}')" class="px-3.5 py-1.5 rounded-xl border border-red-200 hover:border-red-500 hover:bg-red-50 text-red-600 hover:text-red-600 font-bold text-xs transition-all flex items-center gap-1">
+              <i data-lucide="trash-2" class="w-3 h-3"></i> Cancel
+            </button>
           </div>
         `;
-      } else {
-        let bidsListHtml = "";
-        projBids.forEach(b => {
-          bidsListHtml += `
-            <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-3">
-              <div class="flex items-start justify-between gap-4">
-                <div>
-                  <h5 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                    <div class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 font-extrabold uppercase">${b.freelancerName[0]}</div>
-                    ${b.freelancerName}
-                  </h5>
-                  <p class="text-xs text-slate-400 font-semibold mt-1">Delivery Estimate: <span class="text-slate-700">${b.timeline}</span></p>
+
+        if (projBids.length === 0) {
+          footerHtml = `
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-semibold rounded-b-3xl">
+              <span>No proposals submitted yet</span>
+              ${controlsHtml}
+            </div>
+          `;
+        } else {
+          let bidsListHtml = "";
+          projBids.forEach(b => {
+            const freelancerRatingBadge = b.freelancer_rating 
+              ? `<span class="ml-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[10px]"><i data-lucide="star" class="w-3 h-3 fill-emerald-600 text-emerald-600"></i> ${b.freelancer_rating} (${b.freelancer_review_count})</span>`
+              : `<span class="ml-2 text-[10px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">New Member</span>`;
+
+            bidsListHtml += `
+              <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-3">
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <h5 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <div class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] text-slate-500 font-extrabold uppercase">${b.freelancer_name[0]}</div>
+                      ${escapeHtml(b.freelancer_name)}
+                      ${freelancerRatingBadge}
+                    </h5>
+                    <p class="text-xs text-slate-400 font-semibold mt-1">Delivery Estimate: <span class="text-slate-700">${escapeHtml(b.timeline)}</span></p>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-base font-extrabold text-brand-600">$${(b.amount_cents / 100).toLocaleString()}</span>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Proposed Rate</p>
+                  </div>
                 </div>
-                <div class="text-right">
-                  <span class="text-base font-extrabold text-brand-600">$${b.amount.toLocaleString()}</span>
-                  <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Proposed Rate</p>
+                <p class="text-xs text-slate-600 leading-relaxed font-medium bg-white p-3.5 rounded-xl border border-slate-200/50 italic">"${escapeHtml(b.pitch)}"</p>
+                
+                <div class="flex items-center justify-between">
+                  <button onclick="openChatDrawer('${p.id}', '${b.freelancer_id}', '${escapeHtml(p.title)}', '${escapeHtml(b.freelancer_name)}')" class="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-600 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1">
+                    <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Message Freelancer
+                  </button>
+                  <button onclick="handleHireClient('${b.id}')" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1">
+                    <i data-lucide="lock" class="w-3.5 h-3.5"></i> Hire & Lock Escrow
+                  </button>
                 </div>
               </div>
-              <p class="text-xs text-slate-600 leading-relaxed font-medium bg-white p-3.5 rounded-xl border border-slate-200/50 italic">"${b.pitch}"</p>
-              
-              <div class="flex items-center justify-end">
-                <button onclick="handleHireClient('${p.id}', '${b.id}', ${b.amount})" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm shadow-brand-600/10 hover:shadow-brand-500/20 flex items-center gap-1">
-                  <i data-lucide="lock" class="w-3.5 h-3.5"></i>
-                  Hire & Lock Escrow
-                </button>
+            `;
+          });
+
+          footerHtml = `
+            <div class="px-6 py-5 bg-slate-50 border-t border-slate-100 rounded-b-3xl space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1">
+                  <i data-lucide="message-square" class="w-3.5 h-3.5 text-slate-400"></i>
+                  Active Bids (${projBids.length})
+                </h4>
+                ${controlsHtml}
+              </div>
+              <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
+                ${bidsListHtml}
               </div>
             </div>
           `;
-        });
+        }
+
+      } else if (p.status === "hired") {
+        statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-600"><i data-lucide="clock" class="w-3.5 h-3.5"></i> In Progress (Escrow Locked)</span>`;
+        borderStyle = "border-amber-200/80 bg-white";
+
+        const hiredName = p.hired_freelancer_id ? await fetchParticipantName(p.hired_freelancer_id) : "Contractor";
+        const hiredPrice = p.escrow_cents / 100;
 
         footerHtml = `
-          <div class="px-6 py-5 bg-slate-50 border-t border-slate-100 rounded-b-3xl space-y-4">
-            <h4 class="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1">
-              <i data-lucide="message-square" class="w-3.5 h-3.5 text-slate-400"></i>
-              Active Bids (${projBids.length})
-            </h4>
-            <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
-              ${bidsListHtml}
+          <div class="px-6 py-4 bg-amber-50/20 border-t border-amber-100/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs rounded-b-3xl">
+            <span class="font-medium text-slate-500 flex items-center gap-1.5">
+              <i data-lucide="user-check" class="w-4 h-4 text-amber-600"></i>
+              Contractor: <strong class="text-slate-800">${escapeHtml(hiredName)}</strong>
+              <button onclick="openChatDrawer('${p.id}', '${p.hired_freelancer_id}', '${escapeHtml(p.title)}', '${escapeHtml(hiredName)}')" class="ml-2 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-brand-600 transition-all font-semibold flex items-center gap-1">
+                <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Open Chat
+              </button>
+            </span>
+            <span class="font-bold text-amber-700 flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 escrow-pulse shrink-0"></span>
+              $${hiredPrice.toLocaleString()} locked in Escrow
+            </span>
+          </div>
+        `;
+
+      } else if (p.status === "submitted" || p.status === "revision_requested") {
+        const isRev = p.status === "revision_requested";
+        statusBadge = isRev
+          ? `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-50 border border-red-200 text-red-600"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Revision Requested</span>`
+          : `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 border border-purple-200 text-purple-600"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Deliverable Under Review</span>`;
+        
+        borderStyle = isRev ? "border-red-200 bg-white" : "border-purple-200 bg-white shadow-purple-50/20";
+
+        const hiredName = p.hired_freelancer_id ? await fetchParticipantName(p.hired_freelancer_id) : "Contractor";
+        const payoutVal = p.escrow_cents / 100;
+
+        let submissionNoteHtml = "";
+        if (p.submitted_file) {
+          submissionNoteHtml = `
+            <div class="bg-white border border-purple-200/80 p-4 rounded-2xl flex items-start gap-3">
+              <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <i data-lucide="file-archive" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-grow">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-xs font-bold text-slate-900 font-mono">${escapeHtml(p.submitted_file)}</span>
+                  <span class="text-[10px] text-slate-400 font-semibold">${new Date(p.submitted_at).toLocaleDateString()}</span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1 italic font-medium leading-relaxed">"${escapeHtml(p.submitted_comment)}"</p>
+              </div>
             </div>
+          `;
+        }
+
+        let revisionBlock = "";
+        if (isRev) {
+          revisionBlock = `
+            <div class="p-3 bg-red-50/50 border border-red-100 rounded-2xl text-xs text-red-700 font-medium">
+              <strong>Your Revision Requirement:</strong> "${escapeHtml(p.revision_note)}"
+            </div>
+          `;
+        }
+
+        const buttonsRow = isRev 
+          ? `<button onclick="openChatDrawer('${p.id}', '${p.hired_freelancer_id}', '${escapeHtml(p.title)}', '${escapeHtml(hiredName)}')" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm">
+               <i data-lucide="message-square" class="w-4 h-4"></i> Open Chat
+             </button>`
+          : `<div class="flex gap-2">
+               <button onclick="openChatDrawer('${p.id}', '${p.hired_freelancer_id}', '${escapeHtml(p.title)}', '${escapeHtml(hiredName)}')" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm">
+                 <i data-lucide="message-square" class="w-4 h-4"></i> Open Chat
+               </button>
+               <button onclick="openRevisionModal('${p.id}')" class="px-4 py-2 rounded-xl bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm">
+                 <i data-lucide="refresh-cw" class="w-4 h-4"></i> Request Revision
+               </button>
+               <button onclick="handleAcceptPayment('${p.id}', ${payoutVal})" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5">
+                 <i data-lucide="unlock" class="w-4 h-4"></i> Accept & Release Funds
+               </button>
+             </div>`;
+
+        footerHtml = `
+          <div class="px-6 py-5 bg-purple-50/20 border-t border-purple-100 rounded-b-3xl space-y-4">
+            ${submissionNoteHtml}
+            ${revisionBlock}
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              <span class="text-xs text-slate-400 font-semibold">Contractor: <strong class="text-slate-700">${escapeHtml(hiredName)}</strong> &bull; Locked Escrow: <strong class="text-emerald-600">$${payoutVal.toLocaleString()}</strong></span>
+              ${buttonsRow}
+            </div>
+          </div>
+        `;
+
+      } else if (p.status === "completed") {
+        statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 border border-brand-200 text-brand-600"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Completed & Released</span>`;
+        
+        const hiredName = p.hired_freelancer_id ? await fetchParticipantName(p.hired_freelancer_id) : "Contractor";
+        const releasedAmt = p.budget_cents / 100;
+
+        // Fetch Reviews and calculate double blind displays
+        const reviewsRes = await apiRequest(`/api/projects/${p.id}/reviews`);
+        const reviews = reviewsRes.success ? reviewsRes.data.reviews : [];
+        const blinded = reviewsRes.success ? reviewsRes.data.blinded : true;
+
+        let reviewAreaHtml = "";
+        
+        if (reviews.length === 2) {
+          // Double blind released, display both reviews
+          const clientRev = reviews.find(r => r.reviewer_role === "client");
+          const freeRev = reviews.find(r => r.reviewer_role === "freelancer");
+
+          reviewAreaHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-100">
+              <div class="review-card space-y-1">
+                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Your Review to Freelancer</span>
+                <div class="flex items-center text-emerald-500 gap-0.5">${'<i data-lucide="star" class="w-3 h-3 fill-emerald-500 text-emerald-500"></i>'.repeat(clientRev.rating)}</div>
+                <p class="text-xs text-slate-600 italic mt-1 font-medium">"${escapeHtml(clientRev.comment)}"</p>
+              </div>
+              <div class="review-card space-y-1">
+                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Freelancer Feedback to You</span>
+                <div class="flex items-center text-emerald-500 gap-0.5">${'<i data-lucide="star" class="w-3 h-3 fill-emerald-500 text-emerald-500"></i>'.repeat(freeRev.rating)}</div>
+                <p class="text-xs text-slate-600 italic mt-1 font-medium">"${escapeHtml(freeRev.comment)}"</p>
+              </div>
+            </div>
+          `;
+        } else {
+          // Double-blind is still active
+          const myReview = reviews.find(r => r.reviewer_id === currentUser.id);
+          if (myReview) {
+            reviewAreaHtml = `
+              <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-500 font-semibold text-center mt-3">
+                Your review has been submitted. Waiting for the freelancer to submit their review.
+              </div>
+            `;
+          } else {
+            reviewAreaHtml = `
+              <div class="flex items-center justify-between p-4 bg-brand-50/50 border border-brand-100 rounded-2xl mt-3">
+                <div class="text-xs text-brand-800 font-semibold">Contract finalized. Exchange feedback to release public ratings.</div>
+                <button onclick="openReviewModal('${p.id}', '${escapeHtml(p.title)}')" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm">
+                  Review Contractor
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        footerHtml = `
+          <div class="px-6 py-5 bg-brand-50/20 border-t border-brand-100 rounded-b-3xl space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold text-slate-800">Finalized by ${escapeHtml(hiredName)}</p>
+                <p class="text-[10px] text-slate-400 font-semibold">Ledger Receipt: $${releasedAmt.toLocaleString()} credited successfully.</p>
+              </div>
+              <div class="flex gap-2">
+                <button onclick="openChatDrawer('${p.id}', '${p.hired_freelancer_id}', '${escapeHtml(p.title)}', '${escapeHtml(hiredName)}')" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-brand-600 transition-all font-semibold flex items-center gap-1 text-xs shadow-sm">
+                  <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Chat Log
+                </button>
+                <button onclick="simulateDeliverableDownload('${escapeHtml(p.title)}', '${escapeHtml(p.submitted_file || 'deliverable.zip')}')" class="deliverable-link px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-slate-700 hover:text-brand-600 font-semibold text-xs transition-all flex items-center gap-1.5 shrink-0 shadow-sm">
+                  <i data-lucide="download" class="w-4 h-4"></i> Download Deliverable
+                </button>
+              </div>
+            </div>
+            ${reviewAreaHtml}
+          </div>
+        `;
+      } else if (p.status === "cancelled") {
+        statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 border border-slate-200 text-slate-400"><i data-lucide="slash" class="w-3.5 h-3.5"></i> Cancelled</span>`;
+        borderStyle = "border-slate-200 opacity-60";
+        footerHtml = `
+          <div class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 font-semibold rounded-b-3xl">
+            Contract cancelled on sandbox ledger. All pending bids were rejected.
           </div>
         `;
       }
 
-    } else if (p.status === "hired") {
-      statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-600"><i data-lucide="clock" class="w-3.5 h-3.5"></i> In Progress (Escrow Locked)</span>`;
-      borderStyle = "border-amber-200/80 bg-white";
-
-      const matchedBid = db.bids.find(b => b.id === p.hiredBidId);
-      const hiredName = matchedBid ? matchedBid.freelancerName : "Specialist";
-      const hiredPrice = matchedBid ? matchedBid.amount : p.budget;
-
-      footerHtml = `
-        <div class="px-6 py-4 bg-amber-50/20 border-t border-amber-100/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs rounded-b-3xl">
-          <span class="font-medium text-slate-500 flex items-center gap-1.5">
-            <i data-lucide="user-check" class="w-4 h-4 text-amber-600"></i>
-            Contractor: <strong class="text-slate-800">${hiredName}</strong>
-          </span>
-          <span class="font-bold text-amber-700 flex items-center gap-1.5">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 escrow-pulse shrink-0"></span>
-            $${hiredPrice.toLocaleString()} locked in Escrow
-          </span>
-        </div>
-      `;
-
-    } else if (p.status === "submitted") {
-      statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 border border-purple-200 text-purple-600"><i data-lucide="eye" class="w-3.5 h-3.5"></i> Deliverable Under Review</span>`;
-      borderStyle = "border-purple-200 bg-white shadow-purple-50/20";
-
-      const matchedBid = db.bids.find(b => b.id === p.hiredBidId);
-      const hiredName = matchedBid ? matchedBid.freelancerName : "Specialist";
-      const payoutVal = matchedBid ? matchedBid.amount : p.budget;
-
-      footerHtml = `
-        <div class="px-6 py-5 bg-purple-50/20 border-t border-purple-100 rounded-b-3xl space-y-4">
-          <div class="bg-white border border-purple-200/80 p-4 rounded-2xl flex items-start gap-3">
-            <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <i data-lucide="file-archive" class="w-5 h-5"></i>
+      html += `
+        <div class="bg-white border ${borderStyle} rounded-3xl custom-shadow animate-fade-in-up">
+          <div class="p-6 md:p-8 space-y-4">
+            <div class="flex items-start justify-between gap-4">
+              <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${escapeHtml(p.category)}</span>
+              ${statusBadge}
             </div>
-            <div class="flex-grow">
-              <div class="flex items-center justify-between gap-2">
-                <span class="text-xs font-bold text-slate-900 font-mono">${p.submittedFile}</span>
-                <span class="text-[10px] text-slate-400 font-semibold">${new Date(p.submittedAt).toLocaleDateString()}</span>
-              </div>
-              <p class="text-xs text-slate-500 mt-1 italic font-medium leading-relaxed">"${p.submittedComment}"</p>
+            
+            <h3 class="text-xl font-bold text-slate-950">${escapeHtml(p.title)}</h3>
+            <p class="text-sm text-slate-500 font-medium leading-relaxed font-sans">${escapeHtml(p.description)}</p>
+            
+            ${milestonesTrackerHtml}
+
+            <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100/60">
+              <span class="text-xs text-slate-400 font-semibold">Contract Budget</span>
+              <span class="text-lg font-black text-slate-900">$${(p.budget_cents / 100).toLocaleString()}</span>
             </div>
           </div>
-          
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
-            <span class="text-xs text-slate-400 font-semibold">Approved work releases <strong class="text-emerald-600">$${payoutVal.toLocaleString()}</strong> instantly.</span>
-            <button onclick="handleAcceptPayment('${p.id}', ${payoutVal})" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-md shadow-brand-600/10 hover:shadow-brand-500/20 flex items-center gap-1.5">
-              <i data-lucide="unlock" class="w-4 h-4"></i>
-              Accept & Release Funds
-            </button>
-          </div>
-        </div>
-      `;
-
-    } else if (p.status === "completed") {
-      statusBadge = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 border border-brand-200 text-brand-600"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Completed & Released</span>`;
-      
-      const matchedBid = db.bids.find(b => b.id === p.hiredBidId);
-      const hiredName = matchedBid ? matchedBid.freelancerName : "Specialist";
-      const releasedAmt = matchedBid ? matchedBid.amount : p.budget;
-
-      footerHtml = `
-        <div class="px-6 py-5 bg-brand-50/20 border-t border-brand-100 rounded-b-3xl space-y-4">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <p class="text-xs font-bold text-slate-800">Contract finalized by ${hiredName}</p>
-              <p class="text-[10px] text-slate-400 font-semibold">Ledger receipt: $${releasedAmt.toLocaleString()} credited successfully.</p>
-            </div>
-            <button onclick="simulateDeliverableDownload('${p.title}', '${p.submittedFile || 'deliverable.zip'}')" class="deliverable-link px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-brand-500 hover:bg-brand-50 text-slate-700 hover:text-brand-600 font-semibold text-xs transition-all flex items-center gap-1.5 shrink-0 shadow-sm">
-              <i data-lucide="download" class="w-4 h-4"></i>
-              Download Deliverable
-            </button>
-          </div>
+          ${footerHtml}
         </div>
       `;
     }
 
-    html += `
-      <div class="bg-white border ${borderStyle} rounded-3xl custom-shadow animate-fade-in-up">
-        <div class="p-6 md:p-8 space-y-4">
-          <div class="flex items-start justify-between gap-4">
-            <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${p.category}</span>
-            ${statusBadge}
-          </div>
-          
-          <h3 class="text-xl font-bold text-slate-950">${p.title}</h3>
-          <p class="text-sm text-slate-500 font-medium leading-relaxed font-sans">${p.description}</p>
-          
-          <div class="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100/60">
-            <span class="text-xs text-slate-400 font-semibold">Contract Budget</span>
-            <span class="text-lg font-black text-slate-900">$${p.budget.toLocaleString()}</span>
-          </div>
-        </div>
-        ${footerHtml}
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  lucide.createIcons();
+    container.innerHTML = html;
+    lucide.createIcons();
+  } catch (err) {}
 }
 
-// Client Hires Freelancer -> Locks Escrow
-function handleHireClient(projectId, bidId, amount) {
-  const clientUser = db.users.find(u => u.id === db.activeSession.id);
-  
-  if (clientUser.wallet < amount) {
-    showToast(`Insufficient balance to cover bid budget ($${amount.toLocaleString()}). Please Deposit Funds!`, "error");
-    switchTab("client", "wallet-portal");
+async function fetchParticipantName(id) {
+  try {
+    const res = await apiRequest(`/api/users/${id}`);
+    if (res.success) {
+      return res.data.user.name;
+    }
+  } catch (err) {}
+  return "Specialist";
+}
+
+async function handleHireClient(bidId) {
+  try {
+    const res = await apiRequest(`/api/bids/${bidId}/award`, {
+      method: "POST"
+    });
+
+    if (res.success) {
+      showToast("Contract awarded successfully! Escrow balance locked.", "success");
+      checkExistingSession(); // update client wallet balance
+      renderClientProjects();
+    }
+  } catch (err) {}
+}
+
+async function handleAcceptPayment(projectId, amount) {
+  if (!confirm(`Are you sure you want to release the locked escrow of $${amount.toLocaleString()}? This action is irreversible.`)) {
     return;
   }
 
-  // Deduct Client Wallet
-  clientUser.wallet -= amount;
+  try {
+    const res = await apiRequest(`/api/projects/${projectId}/accept-work`, {
+      method: "POST"
+    });
 
-  // Update Project Status
-  const project = db.projects.find(p => p.id === projectId);
-  if (project) {
-    project.status = "hired";
-    project.hiredFreelancerId = db.bids.find(b => b.id === bidId).freelancerId;
-    project.hiredBidId = bidId;
-  }
-
-  saveDatabase();
-  updateClientWalletDisplay(clientUser);
-  renderClientProjects();
-
-  showToast(`Contract awarded! $${amount.toLocaleString()} securely locked in LancerLink Escrow.`, "success");
+    if (res.success) {
+      showToast("Escrow cleared & virtual payout released to freelancer!", "success");
+      checkExistingSession();
+      renderClientProjects();
+    }
+  } catch (err) {}
 }
 
-// Client releases payment upon review
-function handleAcceptPayment(projectId, amount) {
-  const project = db.projects.find(p => p.id === projectId);
-  if (!project) return;
-
-  const freelancer = db.users.find(u => u.id === project.hiredFreelancerId);
-  if (freelancer) {
-    // Release locked escrow budget to freelancer
-    freelancer.wallet += amount;
-  }
-
-  project.status = "completed";
-  saveDatabase();
-
-  updateClientWalletDisplay();
-  renderClientProjects();
-
-  showToast(`Payment released successfully! $${amount.toLocaleString()} transferred directly to ${freelancer ? freelancer.name : 'freelancer'}.`, "success");
-}
-
-// Simulated deliverables downloader (Creates a real browser download anchor dynamically)
 function simulateDeliverableDownload(projectTitle, fileName) {
   const dataContent = `LANCERLINK CONTRACT DELIVERABLE RECEIPT
 ===================================================
@@ -791,7 +989,7 @@ Ledger Transaction Hash: ll_hash_${Date.now().toString(36)}
 Status: PAYMENT RELEASED & VERIFIED BY SANDBOX LEDGER
 Date of Delivery: ${new Date().toLocaleDateString()}
 
-Thank you for utilizing the LancerLink decentralized marketplace protocol!`;
+Thank you for utilizing the LancerLink database-backed freelance ledger!`;
 
   const blob = new Blob([dataContent], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
@@ -803,214 +1001,257 @@ Thank you for utilizing the LancerLink decentralized marketplace protocol!`;
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
   
-  showToast("Deliverable simulation downloaded successfully!", "info");
+  showToast("Deliverable receipt downloaded successfully!", "info");
 }
 
-// ========================================================
-// FREELANCER SIDE INTERACTION LOGIC
-// ========================================================
-function updateFreelancerWalletDisplay(user) {
-  const activeUser = user || db.users.find(u => u.id === db.activeSession.id);
-  const display = document.getElementById("freelancer-wallet-display");
-  const portalDisplay = document.getElementById("wallet-portal-freelancer-balance");
-  
-  if (display && activeUser) display.textContent = `$${activeUser.wallet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (portalDisplay && activeUser) portalDisplay.textContent = `$${activeUser.wallet.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+// Edit & Cancel project actions
+function openEditProjectModal(projectId) {
+  apiRequest(`/api/projects/${projectId}`).then(res => {
+    if (res.success) {
+      const p = res.data.project;
+      document.getElementById("edit-project-id").value = p.id;
+      document.getElementById("edit-title").value = p.title;
+      document.getElementById("edit-category").value = p.category;
+      document.getElementById("edit-budget").value = p.budget_cents / 100;
+      document.getElementById("edit-description").value = p.description;
 
-  // Update pending escrow quick display
-  updateFreelancerEscrowStats(activeUser);
-}
-
-function updateFreelancerEscrowStats(user) {
-  const myContracts = db.projects.filter(p => p.hiredFreelancerId === user.id);
-  
-  // Locked pending escrow funds
-  let pendingEscrow = 0;
-  myContracts.forEach(p => {
-    if (p.status === "hired" || p.status === "submitted") {
-      const matchBid = db.bids.find(b => b.id === p.hiredBidId);
-      if (matchBid) {
-        pendingEscrow += matchBid.amount;
-      }
+      const modal = document.getElementById("edit-project-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
     }
   });
-
-  const display = document.getElementById("freelancer-locked-funds-display");
-  const bar = document.getElementById("freelancer-locked-funds-bar");
-
-  if (display) {
-    display.textContent = `$${pendingEscrow.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  if (bar) {
-    const totalVal = user.wallet + pendingEscrow;
-    const pct = totalVal > 0 ? (pendingEscrow / totalVal) * 100 : 0;
-    bar.style.width = `${pct}%`;
-  }
 }
 
-// Freelancer Earnings Withdrawal simulation
-function handleWithdraw(event) {
-  event.preventDefault();
-  
-  const amtInput = document.getElementById("withdraw-amount");
-  const routeSelect = document.getElementById("withdraw-bank");
-  const amountVal = parseFloat(amtInput.value);
+function closeEditProjectModal() {
+  const modal = document.getElementById("edit-project-modal");
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+}
 
-  if (isNaN(amountVal) || amountVal <= 0) {
-    showToast("Please enter a valid payout amount.", "error");
+async function handleEditProjectSubmit(event) {
+  event.preventDefault();
+  const id = document.getElementById("edit-project-id").value;
+  const title = document.getElementById("edit-title").value.trim();
+  const category = document.getElementById("edit-category").value;
+  const budget = parseFloat(document.getElementById("edit-budget").value);
+  const description = document.getElementById("edit-description").value.trim();
+
+  try {
+    const res = await apiRequest(`/api/projects/${id}`, {
+      method: "PATCH",
+      body: { title, category, budget, description }
+    });
+
+    if (res.success) {
+      showToast("Contract specifications updated successfully.", "success");
+      closeEditProjectModal();
+      renderClientProjects();
+    }
+  } catch (err) {}
+}
+
+async function handleCancelProject(id) {
+  if (!confirm("Are you sure you want to cancel this contract? Bidding will be closed, and freelancers notified.")) {
     return;
   }
 
-  const user = db.users.find(u => u.id === db.activeSession.id);
-  if (user) {
-    if (user.wallet < amountVal) {
-      showToast("Insufficient sandbox balance to fulfill payout.", "error");
-      return;
+  try {
+    const res = await apiRequest(`/api/projects/${id}/cancel`, {
+      method: "POST"
+    });
+    if (res.success) {
+      showToast("Contract cancelled successfully.", "info");
+      renderClientProjects();
     }
-
-    user.wallet -= amountVal;
-    saveDatabase();
-    
-    updateFreelancerWalletDisplay(user);
-    amtInput.value = "";
-
-    showToast(`Withdrawal of $${amountVal.toLocaleString()} initiated to ${routeSelect.value}! Funds clearing instantly.`, "success");
-  }
+  } catch (err) {}
 }
 
-// Live Project Feed Rendering
-function renderLiveProjectFeed() {
+// Revision requests
+function openRevisionModal(projectId) {
+  document.getElementById("revision-project-id").value = projectId;
+  document.getElementById("revision-note").value = "";
+  
+  const modal = document.getElementById("revision-modal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+function closeRevisionModal() {
+  const modal = document.getElementById("revision-modal");
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+}
+
+async function handleRevisionSubmit(event) {
+  event.preventDefault();
+  const projectId = document.getElementById("revision-project-id").value;
+  const note = document.getElementById("revision-note").value.trim();
+
+  try {
+    const res = await apiRequest(`/api/projects/${projectId}/request-revision`, {
+      method: "POST",
+      body: { revision_note: note }
+    });
+
+    if (res.success) {
+      showToast("Revision request transmitted successfully.", "info");
+      closeRevisionModal();
+      renderClientProjects();
+    }
+  } catch (err) {}
+}
+
+// ========================================================
+// FREELANCER WORKSPACE & FEED LOGIC
+// ========================================================
+async function renderLiveProjectFeed() {
   const container = document.getElementById("freelancer-feed-container");
   if (!container) return;
 
-  const searchVal = document.getElementById("work-search").value.trim().toLowerCase();
+  const searchVal = document.getElementById("work-search").value.trim();
   const categoryFilter = document.getElementById("work-filter-category").value;
 
-  const currentFreelancerId = db.activeSession.id;
+  try {
+    let url = `/api/projects?status=open`;
+    if (categoryFilter) url += `&category=${encodeURIComponent(categoryFilter)}`;
+    if (searchVal) url += `&search=${encodeURIComponent(searchVal)}`;
 
-  // Filter open projects
-  let openProjects = db.projects.filter(p => p.status === "open");
+    const res = await apiRequest(url);
+    if (!res.success) return;
 
-  if (categoryFilter) {
-    openProjects = openProjects.filter(p => p.category === categoryFilter);
-  }
+    const openProjects = res.data.projects;
 
-  if (searchVal) {
-    openProjects = openProjects.filter(p => 
-      p.title.toLowerCase().includes(searchVal) || 
-      p.description.toLowerCase().includes(searchVal) ||
-      p.clientName.toLowerCase().includes(searchVal)
-    );
-  }
-
-  if (openProjects.length === 0) {
-    container.innerHTML = `
-      <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow animate-fade-in-up">
-        <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
-          <i data-lucide="search-code" class="w-8 h-8"></i>
-        </div>
-        <h3 class="text-lg font-bold text-slate-900 mb-1">No Available Contracts</h3>
-        <p class="text-sm text-slate-400 max-w-sm mx-auto">No open bids matched your filter configurations or database ledger is currently idle.</p>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
-  }
-
-  // Sort by date newest
-  openProjects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  let html = "";
-
-  openProjects.forEach(p => {
-    // Check if freelancer already has an active bid on this project
-    const myBid = db.bids.find(b => b.projectId === p.id && b.freelancerId === currentFreelancerId);
-    let bidActionHtml = "";
-
-    if (myBid) {
-      bidActionHtml = `
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-brand-600 font-bold bg-brand-50 border border-brand-200/50 px-3.5 py-2 rounded-xl">
-            You Bid: $${myBid.amount.toLocaleString()} (${myBid.timeline})
-          </span>
-          <button onclick="openBidModal('${p.id}')" class="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-600 hover:text-brand-600 font-bold text-xs transition-all">
-            Revise Proposal
-          </button>
+    if (openProjects.length === 0) {
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow">
+          <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
+            <i data-lucide="search-code" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mb-1">No Available Contracts</h3>
+          <p class="text-sm text-slate-400 max-w-sm mx-auto">No open bids matched your filter configurations or database ledger is currently idle.</p>
         </div>
       `;
-    } else {
-      bidActionHtml = `
-        <button onclick="openBidModal('${p.id}')" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm shadow-brand-600/10 hover:shadow-brand-500/20">
-          Submit Contract Proposal
-        </button>
+      lucide.createIcons();
+      return;
+    }
+
+    // Sort newest
+    openProjects.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    let html = "";
+    for (let p of openProjects) {
+      // Fetch user's bid on this project
+      const bidsRes = await apiRequest(`/api/projects/${p.id}/bids`);
+      const myBid = bidsRes.success && bidsRes.data.bids.length > 0 ? bidsRes.data.bids[0] : null;
+
+      let bidActionHtml = "";
+
+      if (myBid) {
+        bidActionHtml = `
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-brand-600 font-bold bg-brand-50 border border-brand-200/50 px-3.5 py-2 rounded-xl">
+              You Bid: $${(myBid.amount_cents / 100).toLocaleString()} (${escapeHtml(myBid.timeline)})
+            </span>
+            <div class="flex gap-2">
+              <button onclick="openChatDrawer('${p.id}', '${currentUser.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.client_name)}')" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1">
+                <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Chat
+              </button>
+              <button onclick="openBidModal('${p.id}')" class="px-4 py-2.5 rounded-xl border border-slate-200 hover:border-brand-500 text-slate-600 hover:text-brand-600 font-bold text-xs transition-all">
+                Revise
+              </button>
+              <button onclick="handleWithdrawBid('${myBid.id}')" class="px-4 py-2.5 rounded-xl border border-red-200 hover:border-red-500 text-red-600 hover:text-red-600 font-bold text-xs transition-all">
+                Withdraw
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        bidActionHtml = `
+          <button onclick="openBidModal('${p.id}')" class="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm">
+            Submit Contract Proposal
+          </button>
+        `;
+      }
+
+      const clientRatingHtml = p.client_rating 
+        ? `<span class="ml-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[9px]"><i data-lucide="star" class="w-2.5 h-2.5 fill-emerald-600 text-emerald-600"></i> ${p.client_rating} (${p.client_review_count})</span>`
+        : `<span class="ml-2 text-[9px] text-slate-400 font-semibold bg-slate-100 px-1.5 py-0.5 rounded">New Member</span>`;
+
+      html += `
+        <div class="bg-white border border-slate-200 rounded-3xl custom-shadow hover:border-brand-500/30 transition-all duration-300 p-6 md:p-8 space-y-4 animate-fade-in-up">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${escapeHtml(p.category)}</span>
+              <h4 class="text-[10px] text-slate-400 font-semibold mt-1">Contract by: <strong class="text-slate-600 font-bold">${escapeHtml(p.client_name)}</strong> ${clientRatingHtml} &bull; Posted ${new Date(p.created_at).toLocaleDateString()}</h4>
+            </div>
+            <span class="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200/30">Escrow Validated</span>
+          </div>
+          
+          <h3 class="text-xl font-bold text-slate-950">${escapeHtml(p.title)}</h3>
+          <p class="text-sm text-slate-500 leading-relaxed font-medium font-sans">${escapeHtml(p.description)}</p>
+          
+          <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-black text-slate-900">$${(p.budget_cents / 100).toLocaleString()}</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Client Budget Cap</span>
+            </div>
+            
+            ${bidActionHtml}
+          </div>
+        </div>
       `;
     }
 
-    // Date formatting
-    const timeString = new Date(p.createdAt).toLocaleDateString();
-
-    html += `
-      <div class="bg-white border border-slate-200 rounded-3xl custom-shadow hover:border-brand-500/30 transition-all duration-300 p-6 md:p-8 space-y-4 animate-fade-in-up">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${p.category}</span>
-            <h4 class="text-[10px] text-slate-400 font-semibold mt-1">Contract by: <strong class="text-slate-600 font-bold">${p.clientName}</strong> &bull; Posted ${timeString}</h4>
-          </div>
-          <span class="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-0.5 rounded border border-brand-200/30">Escrow Validated</span>
-        </div>
-        
-        <h3 class="text-xl font-bold text-slate-950">${p.title}</h3>
-        <p class="text-sm text-slate-500 leading-relaxed font-medium font-sans">${p.description}</p>
-        
-        <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-100">
-          <div class="flex items-baseline gap-1">
-            <span class="text-2xl font-black text-slate-900">$${p.budget.toLocaleString()}</span>
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Client Budget Cap</span>
-          </div>
-          
-          ${bidActionHtml}
-        </div>
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  lucide.createIcons();
+    container.innerHTML = html;
+    lucide.createIcons();
+  } catch (err) {}
 }
 
-// Bidding modal logic
-function openBidModal(projectId) {
-  const project = db.projects.find(p => p.id === projectId);
-  if (!project) return;
+async function handleWithdrawBid(bidId) {
+  if (!confirm("Are you sure you want to withdraw this bid?")) return;
+  try {
+    const res = await apiRequest(`/api/bids/${bidId}/withdraw`, { method: "POST" });
+    if (res.success) {
+      showToast("Bid withdrawn successfully.", "info");
+      renderLiveProjectFeed();
+    }
+  } catch (err) {}
+}
 
-  const currentFreelancerId = db.activeSession.id;
+// Bidding Form Modals
+async function openBidModal(projectId) {
+  try {
+    const res = await apiRequest(`/api/projects/${projectId}`);
+    if (!res.success) return;
 
-  document.getElementById("bid-project-id").value = project.id;
-  document.getElementById("bid-modal-project-title").textContent = project.title;
-  document.getElementById("bid-modal-client-name").textContent = project.clientName;
-  document.getElementById("bid-modal-project-budget").textContent = `$${project.budget.toLocaleString()}`;
+    const project = res.data.project;
+    document.getElementById("bid-project-id").value = project.id;
+    document.getElementById("bid-modal-project-title").textContent = project.title;
+    document.getElementById("bid-modal-client-name").textContent = project.client_name;
+    document.getElementById("bid-modal-project-budget").textContent = `$${(project.budget_cents / 100).toLocaleString()}`;
 
-  // Check if revising
-  const existingBid = db.bids.find(b => b.projectId === project.id && b.freelancerId === currentFreelancerId);
-  const amountInput = document.getElementById("bid-amount");
-  const timelineSelect = document.getElementById("bid-timeline");
-  const pitchText = document.getElementById("bid-pitch");
+    // Load existing bid details if editing
+    const bidsRes = await apiRequest(`/api/projects/${project.id}/bids`);
+    const myBid = bidsRes.success && bidsRes.data.bids.length > 0 ? bidsRes.data.bids[0] : null;
 
-  if (existingBid) {
-    amountInput.value = existingBid.amount;
-    timelineSelect.value = existingBid.timeline;
-    pitchText.value = existingBid.pitch;
-  } else {
-    // Fill defaults
-    amountInput.value = project.budget;
-    timelineSelect.value = "5 Days";
-    pitchText.value = "";
-  }
+    const amountInput = document.getElementById("bid-amount");
+    const timelineSelect = document.getElementById("bid-timeline");
+    const pitchText = document.getElementById("bid-pitch");
 
-  const modal = document.getElementById("bid-modal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+    if (myBid) {
+      amountInput.value = myBid.amount_cents / 100;
+      timelineSelect.value = myBid.timeline;
+      pitchText.value = myBid.pitch;
+    } else {
+      amountInput.value = project.budget_cents / 100;
+      timelineSelect.value = "5 Days";
+      pitchText.value = "";
+    }
+
+    const modal = document.getElementById("bid-modal");
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  } catch (err) {}
 }
 
 function closeBidModal() {
@@ -1020,7 +1261,7 @@ function closeBidModal() {
   document.getElementById("bid-form").reset();
 }
 
-function handleBidSubmit(event) {
+async function handleBidSubmit(event) {
   event.preventDefault();
 
   const projectId = document.getElementById("bid-project-id").value;
@@ -1033,172 +1274,259 @@ function handleBidSubmit(event) {
     return;
   }
 
-  const activeFreelancer = db.users.find(u => u.id === db.activeSession.id);
+  // Check if we are updating an existing bid
+  const bidsRes = await apiRequest(`/api/projects/${projectId}/bids`);
+  const myBid = bidsRes.success && bidsRes.data.bids.length > 0 ? bidsRes.data.bids[0] : null;
 
-  // Check if bid exists to revise it
-  const existingBidIndex = db.bids.findIndex(b => b.projectId === projectId && b.freelancerId === activeFreelancer.id);
+  try {
+    let res;
+    if (myBid) {
+      // Revise existing
+      res = await apiRequest(`/api/bids/${myBid.id}`, {
+        method: "PATCH",
+        body: { amount: bidAmt, timeline, pitch }
+      });
+      if (res.success) {
+        showToast("Proposal specifications revised successfully!", "success");
+      }
+    } else {
+      // Create new
+      res = await apiRequest(`/api/projects/${projectId}/bids`, {
+        method: "POST",
+        body: { amount: bidAmt, timeline, pitch }
+      });
+      if (res.success) {
+        showToast("Proposal successfully transmitted! Open chat enabled.", "success");
+      }
+    }
 
-  if (existingBidIndex > -1) {
-    // Revise existing bid
-    db.bids[existingBidIndex].amount = bidAmt;
-    db.bids[existingBidIndex].timeline = timeline;
-    db.bids[existingBidIndex].pitch = pitch;
-    db.bids[existingBidIndex].createdAt = new Date().toISOString();
-    showToast("Proposal specifications revised successfully!", "success");
-  } else {
-    // Create new bid
-    const newBid = {
-      id: "bid_" + Date.now(),
-      projectId: projectId,
-      freelancerId: activeFreelancer.id,
-      freelancerName: activeFreelancer.name,
-      amount: bidAmt,
-      timeline: timeline,
-      pitch: pitch,
-      createdAt: new Date().toISOString()
-    };
-    db.bids.push(newBid);
-    showToast("Proposal transmitted! Securing communications.", "success");
-  }
-
-  saveDatabase();
-  closeBidModal();
-  renderLiveProjectFeed();
+    if (res.success) {
+      closeBidModal();
+      renderLiveProjectFeed();
+    }
+  } catch (err) {}
 }
 
 // Freelancer Workspace Render
-function renderFreelancerWorkspace() {
+async function renderFreelancerWorkspace() {
   const container = document.getElementById("freelancer-workspace-container");
   if (!container) return;
 
-  const currentFreelancerId = db.activeSession.id;
+  try {
+    const res = await apiRequest(`/api/projects?hired_freelancer_id=${currentUser.id}`);
+    if (!res.success) return;
 
-  // Filter projects where hired
-  const hiredProjects = db.projects.filter(p => p.hiredFreelancerId === currentFreelancerId);
+    const hiredProjects = res.data.projects;
 
-  if (hiredProjects.length === 0) {
-    container.innerHTML = `
-      <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow animate-fade-in-up">
-        <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
-          <i data-lucide="laptop" class="w-8 h-8"></i>
-        </div>
-        <h3 class="text-lg font-bold text-slate-900 mb-1">Workspace Currently Empty</h3>
-        <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Bid on available marketplace contracts to secure active workspace assignments.</p>
-        <button onclick="switchTab('freelancer', 'find-work')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-sm">
-          Browse Contracts
-        </button>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
-  }
-
-  // Sort workspace tasks
-  const statusWeight = { "hired": 1, "submitted": 2, "completed": 3 };
-  hiredProjects.sort((a, b) => statusWeight[a.status] - statusWeight[b.status]);
-
-  let html = "";
-
-  hiredProjects.forEach(p => {
-    let cardBorder = "border-slate-200";
-    let badgeHtml = "";
-    let actionAreaHtml = "";
-
-    const matchedBid = db.bids.find(b => b.id === p.hiredBidId);
-    const lockedEscrowVal = matchedBid ? matchedBid.amount : p.budget;
-
-    if (p.status === "hired") {
-      cardBorder = "border-amber-200/80 bg-white";
-      badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-600"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Contract Active</span>`;
-      
-      actionAreaHtml = `
-        <div class="px-6 py-5 bg-amber-50/20 border-t border-amber-100/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-b-3xl">
-          <span class="text-xs text-amber-800 font-bold flex items-center gap-1">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 escrow-pulse shrink-0"></span>
-            $${lockedEscrowVal.toLocaleString()} secured in LancerLink Escrow
-          </span>
-          <button onclick="openSubmitWorkModal('${p.id}')" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md shadow-indigo-600/10 hover:shadow-indigo-500/20 flex items-center gap-1.5">
-            <i data-lucide="check" class="w-4 h-4"></i>
-            Deliver Finished Deliverable
+    if (hiredProjects.length === 0) {
+      container.innerHTML = `
+        <div class="bg-white border border-slate-200 rounded-3xl p-12 text-center custom-shadow">
+          <div class="w-16 h-16 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto mb-4">
+            <i data-lucide="laptop" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mb-1">Workspace Currently Empty</h3>
+          <p class="text-sm text-slate-400 max-w-sm mx-auto mb-6">Bid on available marketplace contracts to secure workspace assignments.</p>
+          <button onclick="switchTab('freelancer', 'find-work')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm transition-all shadow-sm">
+            Browse Contracts
           </button>
         </div>
       `;
-    } else if (p.status === "submitted") {
-      cardBorder = "border-purple-200/80 bg-white shadow-purple-50/20";
-      badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 border border-purple-200 text-purple-600"><i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i> Delivered & Awaiting Client Review</span>`;
+      lucide.createIcons();
+      return;
+    }
 
-      actionAreaHtml = `
-        <div class="px-6 py-5 bg-purple-50/20 border-t border-purple-100 rounded-b-3xl space-y-3">
-          <div class="bg-white border border-purple-200 p-4 rounded-2xl flex items-start gap-2.5">
-            <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <i data-lucide="file-archive" class="w-4.5 h-4.5"></i>
-            </div>
-            <div>
-              <p class="text-xs font-bold text-slate-800 font-mono">${p.submittedFile}</p>
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed font-medium italic">"${p.submittedComment}"</p>
+    const statusWeight = { "hired": 1, "revision_requested": 1, "submitted": 2, "completed": 3 };
+    hiredProjects.sort((a, b) => statusWeight[a.status] - statusWeight[b.status]);
+
+    let html = "";
+
+    for (let p of hiredProjects) {
+      let cardBorder = "border-slate-200";
+      let badgeHtml = "";
+      let actionAreaHtml = "";
+
+      const milestonesTrackerHtml = renderProjectMilestones(p);
+
+      const lockedEscrowVal = p.escrow_cents / 100;
+
+      if (p.status === "hired") {
+        cardBorder = "border-amber-200/80 bg-white";
+        badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 border border-amber-200 text-amber-600"><i data-lucide="clock" class="w-3.5 h-3.5"></i> Contract Active</span>`;
+        
+        actionAreaHtml = `
+          <div class="px-6 py-5 bg-amber-50/20 border-t border-amber-100/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-b-3xl">
+            <span class="text-xs text-amber-800 font-bold flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-500 escrow-pulse shrink-0"></span>
+              $${lockedEscrowVal.toLocaleString()} secured in LancerLink Escrow
+            </span>
+            <div class="flex gap-2">
+              <button onclick="openChatDrawer('${p.id}', '${currentUser.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.client_name)}')" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="message-square" class="w-4 h-4"></i> Open Chat
+              </button>
+              <button onclick="openSubmitWorkModal('${p.id}')" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5">
+                <i data-lucide="check" class="w-4 h-4"></i> Deliver Finished Work
+              </button>
             </div>
           </div>
-          <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-right">Awaiting instant payment unlock</p>
-        </div>
-      `;
-    } else if (p.status === "completed") {
-      badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 border border-brand-200 text-brand-600"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Paid & Finalized</span>`;
-      
-      actionAreaHtml = `
-        <div class="px-6 py-4 bg-brand-50/20 border-t border-brand-100 rounded-b-3xl flex items-center justify-between text-xs text-brand-800 font-bold">
-          <span>Funds successfully credited to your wallet</span>
-          <span class="flex items-center gap-1 text-emerald-600">
-            <i data-lucide="badge-check" class="w-4 h-4"></i>
-            +$${lockedEscrowVal.toLocaleString()} Earnings Cleared
-          </span>
+        `;
+      } else if (p.status === "revision_requested") {
+        cardBorder = "border-red-200/80 bg-white";
+        badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-50 border border-red-200 text-red-600"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Revision Requested</span>`;
+
+        actionAreaHtml = `
+          <div class="px-6 py-5 bg-red-50/20 border-t border-red-100 rounded-b-3xl space-y-4">
+            <div class="p-4 bg-white border border-red-200 rounded-2xl text-xs text-red-700 font-medium leading-relaxed">
+              <strong>Client Revision Feedback Note:</strong> "${escapeHtml(p.revision_note)}"
+            </div>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <span class="text-xs text-red-800 font-bold">Escrow Funds ($${lockedEscrowVal.toLocaleString()}) secured in vault.</span>
+              <div class="flex gap-2">
+                <button onclick="openChatDrawer('${p.id}', '${currentUser.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.client_name)}')" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:text-brand-600 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="message-square" class="w-4 h-4"></i> Open Chat
+                </button>
+                <button onclick="openSubmitWorkModal('${p.id}')" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-md flex items-center gap-1.5">
+                  <i data-lucide="check" class="w-4 h-4"></i> Resubmit Deliverables
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (p.status === "submitted") {
+        cardBorder = "border-purple-200/80 bg-white shadow-purple-50/20";
+        badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 border border-purple-200 text-purple-600"><i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin"></i> Delivered & Awaiting Review</span>`;
+
+        actionAreaHtml = `
+          <div class="px-6 py-5 bg-purple-50/20 border-t border-purple-100 rounded-b-3xl space-y-3">
+            <div class="bg-white border border-purple-200 p-4 rounded-2xl flex items-start gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                <i data-lucide="file-archive" class="w-4.5 h-4.5"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-800 font-mono">${escapeHtml(p.submitted_file)}</p>
+                <p class="text-xs text-slate-500 mt-1 leading-relaxed font-medium italic">"${escapeHtml(p.submitted_comment)}"</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <button onclick="openChatDrawer('${p.id}', '${currentUser.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.client_name)}')" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-brand-600 transition-all font-semibold flex items-center gap-1 text-xs">
+                <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Project Chat
+              </button>
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider text-right">Awaiting payment release trigger</p>
+            </div>
+          </div>
+        `;
+      } else if (p.status === "completed") {
+        badgeHtml = `<span class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-brand-50 border border-brand-200 text-brand-600"><i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Paid & Finalized</span>`;
+        
+        // Fetch reviews
+        const reviewsRes = await apiRequest(`/api/projects/${p.id}/reviews`);
+        const reviews = reviewsRes.success ? reviewsRes.data.reviews : [];
+        
+        let reviewAreaHtml = "";
+        
+        if (reviews.length === 2) {
+          const clientRev = reviews.find(r => r.reviewer_role === "client");
+          const freeRev = reviews.find(r => r.reviewer_role === "freelancer");
+
+          reviewAreaHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-100">
+              <div class="review-card space-y-1">
+                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Client Feedback to You</span>
+                <div class="flex items-center text-emerald-500 gap-0.5">${'<i data-lucide="star" class="w-3 h-3 fill-emerald-500 text-emerald-500"></i>'.repeat(clientRev.rating)}</div>
+                <p class="text-xs text-slate-600 italic mt-1 font-medium">"${escapeHtml(clientRev.comment)}"</p>
+              </div>
+              <div class="review-card space-y-1">
+                <span class="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Your Review to Client</span>
+                <div class="flex items-center text-emerald-500 gap-0.5">${'<i data-lucide="star" class="w-3 h-3 fill-emerald-500 text-emerald-500"></i>'.repeat(freeRev.rating)}</div>
+                <p class="text-xs text-slate-600 italic mt-1 font-medium">"${escapeHtml(freeRev.comment)}"</p>
+              </div>
+            </div>
+          `;
+        } else {
+          const myReview = reviews.find(r => r.reviewer_id === currentUser.id);
+          if (myReview) {
+            reviewAreaHtml = `
+              <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-500 font-semibold text-center mt-3">
+                Your review has been submitted. Waiting for the client to submit their feedback.
+              </div>
+            `;
+          } else {
+            reviewAreaHtml = `
+              <div class="flex items-center justify-between p-4 bg-brand-50/50 border border-brand-100 rounded-2xl mt-3">
+                <div class="text-xs text-brand-800 font-semibold">Contract finalized. Exchange feedback to release public ratings.</div>
+                <button onclick="openReviewModal('${p.id}', '${escapeHtml(p.title)}')" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs transition-all shadow-sm">
+                  Review Client
+                </button>
+              </div>
+            `;
+          }
+        }
+
+        actionAreaHtml = `
+          <div class="px-6 py-5 bg-brand-50/20 border-t border-brand-100 rounded-b-3xl space-y-4">
+            <div class="flex items-center justify-between text-xs text-brand-800 font-bold">
+              <span>Funds successfully credited to your wallet</span>
+              <div class="flex gap-2 items-center">
+                <button onclick="openChatDrawer('${p.id}', '${currentUser.id}', '${escapeHtml(p.title)}', '${escapeHtml(p.client_name)}')" class="px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-brand-600 transition-all font-semibold flex items-center gap-1 text-xs shadow-sm">
+                  <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Chat Logs
+                </button>
+                <span class="flex items-center gap-1 text-emerald-600 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200">
+                  <i data-lucide="badge-check" class="w-4 h-4 text-emerald-600"></i>
+                  +$${(p.budget_cents / 100).toLocaleString()} Earnings Cleared
+                </span>
+              </div>
+            </div>
+            ${reviewAreaHtml}
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="bg-white border ${cardBorder} rounded-3xl custom-shadow animate-fade-in-up">
+          <div class="p-6 md:p-8 space-y-4">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${escapeHtml(p.category)}</span>
+                <p class="text-[10px] text-slate-400 font-semibold mt-1">Client Contract: <strong class="font-bold text-slate-600">${escapeHtml(p.client_name)}</strong></p>
+              </div>
+              ${badgeHtml}
+            </div>
+
+            <h3 class="text-xl font-bold text-slate-950">${escapeHtml(p.title)}</h3>
+            <p class="text-sm text-slate-500 font-medium leading-relaxed font-sans">${escapeHtml(p.description)}</p>
+            
+            ${milestonesTrackerHtml}
+
+            <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+              <span class="text-xs text-slate-400 font-semibold">Contract Budget</span>
+              <span class="text-lg font-black text-slate-900">$${(p.budget_cents / 100).toLocaleString()}</span>
+            </div>
+          </div>
+          ${actionAreaHtml}
         </div>
       `;
     }
 
-    html += `
-      <div class="bg-white border ${cardBorder} rounded-3xl custom-shadow animate-fade-in-up">
-        <div class="p-6 md:p-8 space-y-4">
-          <div class="flex items-start justify-between gap-4">
-            <div>
-              <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400">${p.category}</span>
-              <p class="text-[10px] text-slate-400 font-semibold mt-1">Client Contract: <strong class="font-bold text-slate-600">${p.clientName}</strong></p>
-            </div>
-            ${badgeHtml}
-          </div>
-
-          <h3 class="text-xl font-bold text-slate-950">${p.title}</h3>
-          <p class="text-sm text-slate-500 font-medium leading-relaxed font-sans">${p.description}</p>
-          
-          <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-            <span class="text-xs text-slate-400 font-semibold">Contract Budget</span>
-            <span class="text-lg font-black text-slate-900">$${lockedEscrowVal.toLocaleString()}</span>
-          </div>
-        </div>
-        ${actionAreaHtml}
-      </div>
-    `;
-  });
-
-  container.innerHTML = html;
-  lucide.createIcons();
+    container.innerHTML = html;
+    lucide.createIcons();
+  } catch (err) {}
 }
 
-// Open Deliver work modal
 function openSubmitWorkModal(projectId) {
-  const project = db.projects.find(p => p.id === projectId);
-  if (!project) return;
+  apiRequest(`/api/projects/${projectId}`).then(res => {
+    if (res.success) {
+      const p = res.data.project;
+      const rate = p.budget_cents / 100;
 
-  const matchedBid = db.bids.find(b => b.id === project.hiredBidId);
-  const rate = matchedBid ? matchedBid.amount : project.budget;
+      document.getElementById("submit-work-project-id").value = p.id;
+      document.getElementById("submit-work-project-title").textContent = p.title;
+      document.getElementById("submit-work-project-budget").textContent = `$${rate.toLocaleString()}`;
+      document.getElementById("submit-filename").value = p.category.toLowerCase().replace(/\s+/g, '_') + "_deliverables.zip";
 
-  document.getElementById("submit-work-project-id").value = project.id;
-  document.getElementById("submit-work-project-title").textContent = project.title;
-  document.getElementById("submit-work-project-budget").textContent = `$${rate.toLocaleString()}`;
-  document.getElementById("submit-filename").value = project.category.toLowerCase().replace(/\s+/g, '_') + "_deliverables.zip";
-
-  const modal = document.getElementById("submit-work-modal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+      const modal = document.getElementById("submit-work-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+  });
 }
 
 function closeSubmitWorkModal() {
@@ -1208,7 +1536,7 @@ function closeSubmitWorkModal() {
   document.getElementById("submit-work-form").reset();
 }
 
-function handleSubmitWork(event) {
+async function handleSubmitWork(event) {
   event.preventDefault();
 
   const projectId = document.getElementById("submit-work-project-id").value;
@@ -1221,18 +1549,397 @@ function handleSubmitWork(event) {
     return;
   }
 
-  const project = db.projects.find(p => p.id === projectId);
-  if (project) {
-    project.status = "submitted";
-    project.submittedFile = filename;
-    project.submittedComment = comment;
-    project.submittedAt = new Date().toISOString();
+  try {
+    const res = await apiRequest(`/api/projects/${projectId}/submit-work`, {
+      method: "POST",
+      body: { filename, comment }
+    });
+
+    if (res.success) {
+      showToast("Deliverable successfully submitted! Awaiting review.", "success");
+      closeSubmitWorkModal();
+      renderFreelancerWorkspace();
+    }
+  } catch (err) {}
+}
+
+// ========================================================
+// REVIEWS AND FEEDBACK EXCHANGER
+// ========================================================
+function openReviewModal(projectId, projectTitle) {
+  document.getElementById("review-project-id").value = projectId;
+  document.getElementById("review-project-title-header").textContent = projectTitle;
+  document.getElementById("review-comment").value = "";
+  
+  // Clear stars
+  setReviewRating(0);
+
+  const modal = document.getElementById("review-modal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+function closeReviewModal() {
+  const modal = document.getElementById("review-modal");
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+  document.getElementById("review-form-element").reset();
+}
+
+function setReviewRating(rating) {
+  selectedReviewRating = rating;
+  document.getElementById("review-rating-value").value = rating > 0 ? rating : "";
+
+  const stars = document.querySelectorAll("#star-picker-container .rating-star");
+  stars.forEach((star, index) => {
+    if (index < rating) {
+      star.classList.add("star-active");
+    } else {
+      star.classList.remove("star-active");
+    }
+  });
+}
+
+async function handleReviewSubmit(event) {
+  event.preventDefault();
+  const projectId = document.getElementById("review-project-id").value;
+  const comment = document.getElementById("review-comment").value.trim();
+
+  if (!selectedReviewRating || !comment) {
+    showToast("Please select a star rating and leave feedback comment.", "error");
+    return;
   }
 
-  saveDatabase();
-  closeSubmitWorkModal();
-  updateFreelancerWalletDisplay();
-  renderFreelancerWorkspace();
+  try {
+    const res = await apiRequest(`/api/projects/${projectId}/reviews`, {
+      method: "POST",
+      body: {
+        rating: selectedReviewRating,
+        comment: comment
+      }
+    });
 
-  showToast("Deliverable successfully submitted! Awaiting client payment release trigger.", "success");
+    if (res.success) {
+      showToast("Feedback review submitted securely. Double-blind active.", "success");
+      closeReviewModal();
+      if (currentUser.role === "client") {
+        renderClientProjects();
+      } else {
+        renderFreelancerWorkspace();
+      }
+    }
+  } catch (err) {}
+}
+
+// ========================================================
+// CONTEXTUAL MESSAGING SYSTEM & HTTP POLLING
+// ========================================================
+function openChatDrawer(projectId, freelancerId, projectTitle, participantName) {
+  activeChatProjectId = projectId;
+  activeChatFreelancerId = freelancerId;
+  activeChatLastId = 0;
+  
+  document.getElementById("chat-project-title").textContent = projectTitle;
+  document.getElementById("chat-participant").textContent = participantName;
+  document.getElementById("chat-thread").innerHTML = `<div class="p-6 text-center text-xs text-slate-400 font-semibold">Loading conversation history...</div>`;
+  document.getElementById("chat-input").value = "";
+
+  const drawer = document.getElementById("chat-drawer");
+  const overlay = document.getElementById("chat-overlay");
+  drawer.classList.add("open");
+  overlay.classList.add("open");
+
+  // Load chat draft if exists in LocalStorage
+  const draftKey = `lancerlink_draft_${projectId}_${freelancerId}`;
+  const savedDraft = localStorage.getItem(draftKey);
+  if (savedDraft) {
+    document.getElementById("chat-input").value = savedDraft;
+  }
+
+  // Listen to draft changes
+  document.getElementById("chat-input").oninput = (e) => {
+    localStorage.setItem(draftKey, e.target.value);
+  };
+
+  // Immediate message pull
+  pullMessages(true);
+
+  // Setup short-polling (every 2 seconds)
+  if (chatPollInterval) clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(() => pullMessages(false), 2000);
+  isChatPollerActive = true;
+}
+
+function closeChatDrawer() {
+  const drawer = document.getElementById("chat-drawer");
+  const overlay = document.getElementById("chat-overlay");
+  drawer.classList.remove("open");
+  overlay.classList.remove("open");
+
+  if (chatPollInterval) {
+    clearInterval(chatPollInterval);
+    chatPollInterval = null;
+  }
+  isChatPollerActive = false;
+  
+  activeChatProjectId = null;
+  activeChatFreelancerId = null;
+  activeChatLastId = 0;
+}
+
+async function pullMessages(isInitial = false) {
+  if (!activeChatProjectId || !activeChatFreelancerId) return;
+
+  try {
+    const res = await apiRequest(`/api/projects/${activeChatProjectId}/messages?freelancer_id=${activeChatFreelancerId}&after_id=${activeChatLastId}`);
+    if (!res.success) return;
+
+    const messages = res.data.messages;
+    const threadContainer = document.getElementById("chat-thread");
+
+    if (isInitial) {
+      threadContainer.innerHTML = "";
+    }
+
+    if (messages.length > 0) {
+      let isScrollAtBottom = threadContainer.scrollHeight - threadContainer.scrollTop <= threadContainer.clientHeight + 80;
+
+      messages.forEach(m => {
+        const rowClass = m.sender_id === currentUser.id ? "message-row-own" : "message-row-other";
+        
+        // Find correct bubble color based on sender's role
+        // Server returns the message. The joining sender user could be client/freelancer.
+        // We join or verify role. Clients are emerald, Freelancers are slate.
+        // We check if sender is jane (client) or check role. Or simpler:
+        // Client ID of project determines client vs freelancer bubbles.
+        const isClientMsg = m.sender_id === m.client_id;
+        const bubbleClass = isClientMsg ? "message-bubble-client" : "message-bubble-freelancer";
+
+        const msgEl = document.createElement("div");
+        msgEl.className = `message-row ${rowClass} message-enter`;
+        msgEl.innerHTML = `
+          <div class="message-bubble ${bubbleClass}">
+            <div class="text-[9px] font-bold opacity-60 mb-0.5 flex items-center justify-between gap-4">
+              <span>${escapeHtml(m.sender_name)}</span>
+              <span>${new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+            <p class="whitespace-pre-wrap font-medium break-words">${escapeHtml(m.body)}</p>
+          </div>
+        `;
+        threadContainer.appendChild(msgEl);
+        
+        activeChatLastId = m.id;
+      });
+
+      lucide.createIcons();
+
+      if (isInitial || isScrollAtBottom) {
+        threadContainer.scrollTop = threadContainer.scrollHeight;
+      }
+    }
+
+    if (isInitial && messages.length === 0) {
+      threadContainer.innerHTML = `<div class="p-6 text-center text-xs text-slate-400 font-semibold">No messages yet. Send a message to start discussion.</div>`;
+    }
+
+    // Mark messages as read
+    if (messages.length > 0) {
+      await apiRequest("/api/messages/mark-read", {
+        method: "POST",
+        body: {
+          project_id: activeChatProjectId,
+          freelancer_id: activeChatFreelancerId
+        }
+      });
+    }
+
+  } catch (err) {
+    if (isInitial) {
+      document.getElementById("chat-thread").innerHTML = `<div class="p-6 text-center text-xs text-red-400 font-bold">Failed to load messages history. Close and try again.</div>`;
+    }
+  }
+}
+
+async function handleSendMessage(event) {
+  event.preventDefault();
+  const inputEl = document.getElementById("chat-input");
+  const body = inputEl.value.trim();
+
+  if (!body) return;
+
+  try {
+    const res = await apiRequest(`/api/projects/${activeChatProjectId}/messages`, {
+      method: "POST",
+      body: {
+        freelancer_id: activeChatFreelancerId,
+        body: body
+      }
+    });
+
+    if (res.success) {
+      // Clear input and draft cache
+      inputEl.value = "";
+      localStorage.removeItem(`lancerlink_draft_${activeChatProjectId}_${activeChatFreelancerId}`);
+      pullMessages(false);
+    }
+  } catch (err) {}
+}
+
+// Support Enter key for sending (Shift+Enter for newline)
+document.getElementById("chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("chat-input-form").requestSubmit();
+  }
+});
+
+// ========================================================
+// NOTIFICATIONS SYSTEM
+// ========================================================
+let isNotificationsOpen = false;
+
+function toggleNotificationsDropdown(event, role) {
+  event.stopPropagation();
+  const dropdown = document.getElementById(`${role}-notification-dropdown`);
+  
+  // Close other dropdowns
+  const otherRole = role === "client" ? "freelancer" : "client";
+  const otherDropdown = document.getElementById(`${otherRole}-notification-dropdown`);
+  if (otherDropdown) otherDropdown.classList.add("hidden");
+
+  if (dropdown.classList.contains("hidden")) {
+    dropdown.classList.remove("hidden");
+    isNotificationsOpen = true;
+    renderNotificationsList(role);
+  } else {
+    dropdown.classList.add("hidden");
+    isNotificationsOpen = false;
+  }
+}
+
+// Close dropdown on clicking outside
+document.addEventListener("click", () => {
+  const dropdowns = ["client-notification-dropdown", "freelancer-notification-dropdown"];
+  dropdowns.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+  isNotificationsOpen = false;
+});
+
+async function pollGlobalUpdates() {
+  if (!currentUser) return;
+  
+  try {
+    // 1. Poll notifications count
+    const res = await apiRequest("/api/notifications");
+    if (res.success) {
+      const count = res.data.unread_count;
+      const role = currentUser.role;
+      const badge = document.getElementById(`${role}-notification-count`);
+
+      if (badge) {
+        if (count > 0) {
+          badge.textContent = count;
+          badge.classList.remove("hidden");
+        } else {
+          badge.classList.add("hidden");
+        }
+      }
+
+      // If open, redraw list
+      if (isNotificationsOpen) {
+        renderNotificationsList(role, res.data.notifications);
+      }
+    }
+
+    // 2. Refresh current dashboard lists depending on active tabs
+    const activeDashboard = document.getElementById(`${currentUser.role}-dashboard-section`);
+    if (activeDashboard && !activeDashboard.classList.contains("hidden")) {
+      const activeTabContent = activeDashboard.querySelector(".tab-content.active");
+      if (activeTabContent) {
+        const id = activeTabContent.id;
+        if (id === "client-tab-my-projects") {
+          renderClientProjects();
+        } else if (id === "freelancer-tab-find-work") {
+          renderLiveProjectFeed();
+        } else if (id === "freelancer-tab-workspace") {
+          renderFreelancerWorkspace();
+        }
+      }
+    }
+  } catch (err) {}
+}
+
+async function renderNotificationsList(role, preFetchedNotifs = null) {
+  const listContainer = document.getElementById(`${role}-notification-list`);
+  if (!listContainer) return;
+
+  try {
+    let notifs = preFetchedNotifs;
+    if (!notifs) {
+      const res = await apiRequest("/api/notifications");
+      if (res.success) notifs = res.data.notifications;
+    }
+
+    if (!notifs || notifs.length === 0) {
+      listContainer.innerHTML = `<div class="px-4 py-6 text-center text-xs text-slate-400 font-semibold">No recent notifications.</div>`;
+      return;
+    }
+
+    let html = "";
+    notifs.forEach(n => {
+      const unreadStyle = n.is_read === 0 ? "bg-emerald-50/60 font-semibold" : "";
+      const dateStr = new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      
+      html += `
+        <div onclick="handleNotificationClick(event, ${n.id}, '${n.project_id}', '${n.notification_type}')" 
+             class="px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer text-xs text-slate-700 flex flex-col gap-1 ${unreadStyle}">
+          <p class="leading-relaxed">${escapeHtml(n.message)}</p>
+          <span class="text-[9px] text-slate-400 font-bold">${dateStr}</span>
+        </div>
+      `;
+    });
+
+    listContainer.innerHTML = html;
+  } catch (err) {}
+}
+
+async function handleNotificationClick(event, notificationId, projectId, type) {
+  event.stopPropagation();
+  
+  try {
+    // Mark read
+    await apiRequest(`/api/notifications/${notificationId}/read`, { method: "POST" });
+    
+    // Close dropdown
+    const role = currentUser.role;
+    document.getElementById(`${role}-notification-dropdown`).classList.add("hidden");
+    isNotificationsOpen = false;
+
+    // Refresh bell count
+    pollGlobalUpdates();
+
+    // Navigate to appropriate tab based on type
+    if (role === "client") {
+      switchTab("client", "my-projects");
+    } else {
+      if (type === "hired" || type === "revision_requested" || type === "payment_released") {
+        switchTab("freelancer", "workspace");
+      } else {
+        switchTab("freelancer", "find-work");
+      }
+    }
+  } catch (err) {}
+}
+
+async function markAllNotificationsRead(event, role) {
+  event.stopPropagation();
+  try {
+    const res = await apiRequest("/api/notifications/read-all", { method: "POST" });
+    if (res.success) {
+      showToast("All notifications marked as read.", "success");
+      pollGlobalUpdates();
+    }
+  } catch (err) {}
 }

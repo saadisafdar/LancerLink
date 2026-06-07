@@ -185,3 +185,264 @@ body {
 .wallet-glow:hover::before {
   left: 125%;
 }
+
+/* ========================================================
+   FULL-STACK ADDITIONS
+   ======================================================== */
+
+/* Chat Overlay & Drawer */
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 45;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.chat-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 440px;
+  max-width: 100vw;
+  background: white;
+  border-left: 1px solid #e2e8f0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.chat-drawer.open {
+  transform: translateX(0);
+}
+
+.chat-thread {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #f8fafc;
+}
+
+.message-row {
+  display: flex;
+  width: 100%;
+}
+.message-row-own {
+  justify-content: flex-end;
+}
+.message-row-other {
+  justify-content: flex-start;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 0.75rem 1rem;
+  border-radius: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.message-row-own .message-bubble {
+  border-bottom-right-radius: 0.25rem;
+}
+.message-row-other .message-bubble {
+  border-bottom-left-radius: 0.25rem;
+}
+
+/* Colors as requested: Client is emerald, Freelancer is slate */
+.message-bubble-client {
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  color: #064e3b;
+}
+.message-bubble-freelancer {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+}
+
+.message-enter {
+  animation: msgEnter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes msgEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Star Picker Interaction */
+.star-picker {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.rating-star {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.rating-star:hover {
+  transform: scale(1.15);
+}
+.star-active {
+  color: #10b981;
+  fill: #10b981;
+}
+
+/* 4-Stage Lifecycle Milestone Tracker */
+.milestone-tracker {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1.5rem 0;
+  padding: 0 0.5rem;
+}
+
+.milestone-line {
+  position: absolute;
+  top: 13px;
+  left: 2rem;
+  right: 2rem;
+  height: 3px;
+  background: #e2e8f0;
+  z-index: 1;
+}
+
+.milestone-line-progress {
+  position: absolute;
+  top: 13px;
+  left: 2rem;
+  height: 3px;
+  background: #10b981;
+  z-index: 2;
+  transition: width 0.4s ease;
+}
+
+.milestone-step {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 5.5rem;
+  text-align: center;
+  cursor: default;
+}
+
+.milestone-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: white;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #64748b;
+  transition: all 0.3s ease;
+  margin-bottom: 0.25rem;
+}
+
+.milestone-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1.2;
+  transition: color 0.3s ease;
+}
+
+/* Milestone States */
+.milestone-complete .milestone-circle {
+  background: #10b981;
+  border-color: #10b981;
+  color: white;
+}
+.milestone-complete .milestone-label {
+  color: #047857;
+}
+
+.milestone-current .milestone-circle {
+  border-color: #10b981;
+  color: #10b981;
+  font-weight: 900;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+.milestone-current .milestone-label {
+  color: #0f172a;
+}
+
+.milestone-future .milestone-circle {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #94a3b8;
+}
+.milestone-future .milestone-label {
+  color: #94a3b8;
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: white;
+  font-size: 8px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 1px solid white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Review Card rendering */
+.review-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+/* Transaction List Item */
+.transaction-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8125rem;
+}
+
+/* Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .chat-drawer, .chat-overlay, .milestone-line-progress, .milestone-circle, .toast {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+

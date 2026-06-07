@@ -100,3 +100,10 @@ htmlcov/
 *.log
 *.tmp
 *.bak
+
+# =========================
+# LancerLink Database
+# =========================
+lancerlink.db
+.env
+

@@ -151,6 +151,23 @@
             </button>
           </div>
 
+          <!-- Notification Bell -->
+          <div class="relative">
+            <button onclick="toggleNotificationsDropdown(event, 'client')" class="relative w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center shadow-sm text-slate-600" id="client-notification-bell" title="Notifications">
+              <i data-lucide="bell" class="w-4 h-4"></i>
+              <span id="client-notification-count" class="notification-badge hidden">0</span>
+            </button>
+            <div id="client-notification-dropdown" class="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl hidden z-50 overflow-hidden">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800">Notifications</span>
+                <button onclick="markAllNotificationsRead(event, 'client')" class="text-[10px] text-brand-600 hover:text-brand-700 font-bold">Mark all read</button>
+              </div>
+              <div id="client-notification-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                <!-- Renders via JS -->
+              </div>
+            </div>
+          </div>
+
           <!-- Profile & Logout Dropdown simulation -->
           <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
             <div class="text-right hidden sm:block">
@@ -406,6 +423,16 @@
                 </form>
               </div>
             </div>
+            <!-- Client Transaction History Card -->
+            <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 custom-shadow max-w-5xl mt-6">
+              <h3 class="text-lg font-bold text-slate-950 mb-4 flex items-center gap-2">
+                <i data-lucide="receipt" class="w-5 h-5 text-slate-400"></i>
+                Transaction Ledger History
+              </h3>
+              <div id="client-transactions-list" class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                <!-- Loaded via API -->
+              </div>
+            </div>
           </div>
         </main>
       </div>
@@ -436,6 +463,23 @@
             <button onclick="switchTab('freelancer', 'earnings')" class="w-7 h-7 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 transition-all hover:scale-105 active:scale-95" title="Withdraw earnings">
               <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
             </button>
+          </div>
+
+          <!-- Notification Bell -->
+          <div class="relative">
+            <button onclick="toggleNotificationsDropdown(event, 'freelancer')" class="relative w-9 h-9 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center shadow-sm text-slate-600" id="freelancer-notification-bell" title="Notifications">
+              <i data-lucide="bell" class="w-4 h-4"></i>
+              <span id="freelancer-notification-count" class="notification-badge hidden">0</span>
+            </button>
+            <div id="freelancer-notification-dropdown" class="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl hidden z-50 overflow-hidden">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200/80 flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800">Notifications</span>
+                <button onclick="markAllNotificationsRead(event, 'freelancer')" class="text-[10px] text-brand-600 hover:text-brand-700 font-bold">Mark all read</button>
+              </div>
+              <div id="freelancer-notification-list" class="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                <!-- Renders via JS -->
+              </div>
+            </div>
           </div>
 
           <!-- Profile & Logout Dropdown simulation -->
@@ -607,6 +651,16 @@
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+            <!-- Freelancer Transaction History Card -->
+            <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 custom-shadow max-w-5xl mt-6">
+              <h3 class="text-lg font-bold text-slate-950 mb-4 flex items-center gap-2">
+                <i data-lucide="receipt" class="w-5 h-5 text-slate-400"></i>
+                Transaction Ledger History
+              </h3>
+              <div id="freelancer-transactions-list" class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                <!-- Loaded via API -->
               </div>
             </div>
           </div>
@@ -784,6 +838,157 @@
         </form>
       </div>
 
+    </div>
+  </div>
+
+  <!-- EDIT PROJECT MODAL -->
+  <div id="edit-project-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-lg overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      <button onclick="closeEditProjectModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-brand-600 text-white mb-2">EDIT CONTRACT</div>
+        <h3 class="text-2xl font-bold text-slate-950">Modify Contract Specs</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Changes are only allowed while the project is in open bidding.</p>
+      </div>
+      <div class="p-6 md:p-8">
+        <form id="edit-project-form" onsubmit="handleEditProjectSubmit(event)" class="space-y-4">
+          <input type="hidden" id="edit-project-id">
+          <div class="space-y-1">
+            <label for="edit-title" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Contract Title</label>
+            <input type="text" id="edit-title" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all">
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label for="edit-category" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Category</label>
+              <select id="edit-category" required class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all bg-white">
+                <option value="Web Development">Web Development</option>
+                <option value="Mobile Applications">Mobile Applications</option>
+                <option value="Brand Design">Brand Design & Illustration</option>
+                <option value="Copywriting & Marketing">Copywriting & Marketing</option>
+                <option value="Database Engineering">Database Engineering</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <label for="edit-budget" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Target Budget (USD)</label>
+              <div class="relative">
+                <span class="absolute left-4 top-3 text-slate-400 font-bold text-sm">$</span>
+                <input type="number" id="edit-budget" required min="10" class="w-full pl-8 pr-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-semibold transition-all">
+              </div>
+            </div>
+          </div>
+          <div class="space-y-1">
+            <label for="edit-description" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Contract Description</label>
+            <textarea id="edit-description" required rows="4" class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+          </div>
+          <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 flex items-center justify-center gap-2">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            Save Specs & Update
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVISION REQUEST MODAL -->
+  <div id="revision-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-md overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      <button onclick="closeRevisionModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-red-600 text-white mb-2">REQUEST REVISION</div>
+        <h3 id="revision-project-title" class="text-2xl font-bold text-slate-950">Project Title</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Provide constructive feedback to the contractor.</p>
+      </div>
+      <div class="p-6 md:p-8">
+        <form id="revision-form" onsubmit="handleRevisionSubmit(event)" class="space-y-4">
+          <input type="hidden" id="revision-project-id">
+          <div class="space-y-1">
+            <label for="revision-note" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Revision Requirements / Feedback</label>
+            <textarea id="revision-note" required rows="4" placeholder="Detail exactly what changes or improvements are needed before escrow release..."
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+          </div>
+          <button type="submit" class="w-full py-3.5 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm transition-all shadow-md shadow-red-600/10 flex items-center justify-center gap-2">
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            Transmit Revision Request
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAVE REVIEW MODAL -->
+  <div id="review-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+    <div class="relative bg-white rounded-3xl border border-slate-200 w-full max-w-md overflow-hidden custom-shadow scale-95 transition-transform duration-300">
+      <button onclick="closeReviewModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+      <div class="p-6 md:p-8 bg-slate-50 border-b border-slate-200/80">
+        <div class="inline-flex px-2 py-0.5 rounded text-[9px] font-extrabold uppercase bg-emerald-600 text-white mb-2">PROJECT EVALUATION</div>
+        <h3 id="review-project-title-header" class="text-2xl font-bold text-slate-950">Project Title</h3>
+        <p class="text-xs text-slate-400 font-semibold mt-1">Submit a double-blind rating to finalise the contract.</p>
+      </div>
+      <div class="p-6 md:p-8">
+        <form id="review-form-element" onsubmit="handleReviewSubmit(event)" class="space-y-4">
+          <input type="hidden" id="review-project-id">
+          
+          <div class="space-y-2 text-center py-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Assign Score Rating</label>
+            <div class="star-picker" id="star-picker-container">
+              <i data-lucide="star" class="w-8 h-8 rating-star text-slate-300 hover:text-emerald-500 transition-colors" data-rating="1" onclick="setReviewRating(1)"></i>
+              <i data-lucide="star" class="w-8 h-8 rating-star text-slate-300 hover:text-emerald-500 transition-colors" data-rating="2" onclick="setReviewRating(2)"></i>
+              <i data-lucide="star" class="w-8 h-8 rating-star text-slate-300 hover:text-emerald-500 transition-colors" data-rating="3" onclick="setReviewRating(3)"></i>
+              <i data-lucide="star" class="w-8 h-8 rating-star text-slate-300 hover:text-emerald-500 transition-colors" data-rating="4" onclick="setReviewRating(4)"></i>
+              <i data-lucide="star" class="w-8 h-8 rating-star text-slate-300 hover:text-emerald-500 transition-colors" data-rating="5" onclick="setReviewRating(5)"></i>
+            </div>
+            <input type="hidden" id="review-rating-value" required>
+          </div>
+          
+          <div class="space-y-1">
+            <label for="review-comment" class="text-xs font-bold text-slate-700 uppercase tracking-wider">Written Review Comment</label>
+            <textarea id="review-comment" required rows="3" placeholder="Share your experience working on this contract..."
+              class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-sm font-medium transition-all leading-relaxed"></textarea>
+          </div>
+          
+          <button type="submit" id="review-submit-btn" class="w-full py-3.5 px-6 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm transition-all shadow-md shadow-brand-600/10 flex items-center justify-center gap-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            Publish Double-Blind Review
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT DRAWER OVERLAY -->
+  <div id="chat-overlay" class="chat-overlay" onclick="closeChatDrawer()"></div>
+
+  <!-- CONTEXTUAL CHAT DRAWER -->
+  <div id="chat-drawer" class="chat-drawer">
+    <!-- Chat Header -->
+    <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50 shrink-0">
+      <div>
+        <h4 id="chat-project-title" class="text-sm font-bold text-slate-900 truncate max-w-[280px]">Project Title</h4>
+        <p id="chat-participant" class="text-xs text-slate-400 font-medium">Participant Name</p>
+      </div>
+      <button onclick="closeChatDrawer()" class="w-8 h-8 rounded-full bg-white hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 transition-all">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <!-- Messages Thread -->
+    <div id="chat-thread" class="chat-thread">
+      <!-- Messages render here -->
+    </div>
+    <!-- Chat Input Form -->
+    <div class="p-4 border-t border-slate-200 bg-white shrink-0">
+      <form id="chat-input-form" onsubmit="handleSendMessage(event)" class="flex gap-2">
+        <textarea id="chat-input" rows="1" placeholder="Type a message... (Enter to send)"
+          class="flex-grow px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 text-sm font-medium resize-none max-h-24"></textarea>
+        <button type="submit" id="chat-send-btn" class="w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center transition-all shrink-0">
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </form>
     </div>
   </div>
 
